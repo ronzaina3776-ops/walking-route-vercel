@@ -23,10 +23,10 @@ export default async function handler(req, res) {
       .map(w => `${w.lat},${w.lng}`)
       .join('|');
 
-    // 大通り避ける設定を追加
     const avoidParam = avoidHighways ? '&avoid=highways' : '';
 
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&waypoints=${waypointsParam}&mode=walking${avoidParam}&key=${apiKey}`;
+    // alternatives=trueとregion=jpを追加
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&waypoints=${waypointsParam}&mode=walking${avoidParam}&alternatives=true&region=jp&key=${apiKey}`;
 
     const response = await fetch(url);
     const data = await response.json();
