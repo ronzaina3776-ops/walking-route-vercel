@@ -177,89 +177,65 @@
         }
 
         async function createRoute() {
-    if (!map || !userLocation) {
-        alert('地図がまだ準備できていません');
-        return;
-    }
+            if (!map || !userLocation) {
+                alert('地図がまだ準備できていません');
+                return;
+            }
 
-    const button = document.getElementById('createRouteBtn');
-    button.disabled = true;
-    button.textContent = '⏳ ルート作成中...';
+            const button = document.getElementById('createRouteBtn');
+            button.disabled = true;
+            button.textContent = '⏳ ルート作成中...';
 
-    // 古いルートを削除
-    if (directionsRenderer) {
-        directionsRenderer.setMap(null);
-    }
+            try {
+                const targetDistance = (currentSteps * 0.7) / 1000;
+                const waypoints = generateWaypoints(userLocation, targetDistance);
 
-    try {
-        const targetDistance = (currentSteps * 0.7) / 1000;
-        const waypoints = generateWaypoints(userLocation, targetDistance);
+                // Vercelのバックエンドを呼び出す
+                const response = await fetch('/api/directions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        origin: userLocation,
+                        destination: userLocation,
+                        waypoints: waypoints
+                    })
+                });
 
-        // Vercelのバックエンドを呼び出す
-        const response = await fetch('/api/directions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                origin: userLocation,
-                destination: userLocation,
-                waypoints: waypoints
-            })
-        });
+                const data = await response.json();
 
-        const data = await response.json();
+                if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+                    currentRoute = data.routes[0];
+                    directionsRenderer.setDirections(data);
 
-        if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-            currentRoute = data.routes[0];
+                    let totalDistance = 0;
+                    let totalDuration = 0;
 
-            // ポリラインを手動でデコードして描画
-            const path = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points);
-            
-            // 新しいポリラインを作成
-            const routePolyline = new google.maps.Polyline({
-                path: path,
-                geodesic: true,
-                strokeColor: '#22c55e',
-                strokeOpacity: 1.0,
-                strokeWeight: 5,
-                map: map
-            });
+                    currentRoute.legs.forEach(leg => {
+                        totalDistance += leg.distance.value;
+                        totalDuration += leg.duration.value;
+                    });
 
-            // 地図の表示範囲を調整
-            const bounds = new google.maps.LatLngBounds();
-            path.forEach(point => bounds.extend(point));
-            map.fitBounds(bounds);
+                    const distanceKm = (totalDistance / 1000).toFixed(1);
+                    const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
+                    const timeMinutes = Math.round(totalDuration / 60);
 
-            // ルート情報を計算
-            let totalDistance = 0;
-            let totalDuration = 0;
+                    document.getElementById('routeDistance').textContent = distanceKm;
+                    document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
+                    document.getElementById('routeTime').textContent = timeMinutes;
 
-            currentRoute.legs.forEach(leg => {
-                totalDistance += leg.distance.value;
-                totalDuration += leg.duration.value;
-            });
-
-            const distanceKm = (totalDistance / 1000).toFixed(1);
-            const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
-            const timeMinutes = Math.round(totalDuration / 60);
-
-            document.getElementById('routeDistance').textContent = distanceKm;
-            document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
-            document.getElementById('routeTime').textContent = timeMinutes;
-
-            document.getElementById('routeInfo').classList.remove('hidden');
-        } else {
-            alert('ルート作成に失敗しました: ' + (data.error || data.status));
+                    document.getElementById('routeInfo').classList.remove('hidden');
+                } else {
+                    alert('ルート作成に失敗しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = '🗺️ ルートを作成';
+            }
         }
-    } catch (error) {
-        console.error('エラー詳細:', error);
-        alert('エラーが発生しました: ' + error.message);
-    } finally {
-        button.disabled = false;
-        button.textContent = '🗺️ ルートを作成';
-    }
-}
 
         function generateWaypoints(center, targetDistanceKm) {
             const waypoints = [];
@@ -283,27 +259,26 @@
             return waypoints;
         }
 
-       function openInGoogleMaps() {
-    if (!currentRoute || !userLocation) {
-        alert('まずルートを作成してください');
-        return;
-    }
+        function openInGoogleMaps() {
+            if (!currentRoute || !userLocation) {
+                alert('まずルートを作成してください');
+                return;
+            }
 
-    const waypoints = [];
-    currentRoute.legs.forEach((leg, index) => {
-        if (index < currentRoute.legs.length - 1) {
-            const loc = leg.end_location;
-            // プロパティとしてアクセス（括弧なし）
-            waypoints.push(`${loc.lat},${loc.lng}`);
+            const waypoints = [];
+            currentRoute.legs.forEach((leg, index) => {
+                if (index < currentRoute.legs.length - 1) {
+                    const loc = leg.end_location;
+                    waypoints.push(`${loc.lat()},${loc.lng()}`);
+                }
+            });
+
+            const origin = `${userLocation.lat},${userLocation.lng}`;
+            const waypointsParam = waypoints.join('|');
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${origin}&waypoints=${waypointsParam}&travelmode=walking`;
+
+            window.open(url, '_blank');
         }
-    });
-
-    const origin = `${userLocation.lat},${userLocation.lng}`;
-    const waypointsParam = waypoints.join('|');
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${origin}&waypoints=${waypointsParam}&travelmode=walking`;
-
-    window.open(url, '_blank');
-}
     </script>
 </body>
 </html>
