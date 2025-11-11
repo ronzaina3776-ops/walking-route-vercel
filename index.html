@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>お散歩ルート作成 - Google Maps版</title>
+    <title>お散歩ルート作成</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map { height: 450px; width: 100%; }
@@ -21,24 +21,12 @@
                     </svg>
                 </div>
                 <h1 class="text-3xl font-bold mb-2">お散歩ルート作成</h1>
-                <p class="text-gray-500">Google Maps版 - 安全設計</p>
+                <p class="text-gray-500">散歩コースを作成しましょう</p>
             </div>
             
-            <div class="space-y-3">
-                <button onclick="getLocation()" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl hover:bg-green-600 transition-colors">
-                    📍 現在地を使う
-                </button>
-                
-                <button onclick="startDemo()" class="w-full bg-gray-600 text-white font-bold py-4 rounded-xl hover:bg-gray-700 transition-colors">
-                    🎮 デモモードで試す（東京駅）
-                </button>
-            </div>
-            
-            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p class="text-sm text-blue-800">
-                    <strong>🔒 安全設計:</strong> APIキーを完全に隠した設計
-                </p>
-            </div>
+            <button onclick="getLocation()" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl hover:bg-green-600 transition-colors">
+                📍 現在地を使う
+            </button>
         </div>
     </div>
 
@@ -49,7 +37,7 @@
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <div>
                 <h1 class="text-2xl font-bold">お散歩ルート作成</h1>
-                <p class="text-sm text-gray-500">Google Maps版 - 準備完了！</p>
+                <p class="text-sm text-gray-500">Google Maps版</p>
             </div>
         </div>
 
@@ -71,6 +59,15 @@
                 <button onclick="setSteps(5000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">5千歩</button>
                 <button onclick="setSteps(10000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">1万歩</button>
             </div>
+        </div>
+
+        <!-- ルート設定 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <h2 class="font-medium mb-3">ルート設定</h2>
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="avoidHighways" checked class="w-5 h-5 accent-green-500">
+                <span class="text-gray-700">大通り・幹線道路を避ける</span>
+            </label>
         </div>
 
         <!-- ルート作成ボタン -->
@@ -113,15 +110,10 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry"></script>
     <script>
         let map = null;
-        let directionsRenderer = null;
         let userLocation = null;
         let currentSteps = 5000;
         let currentRoute = null;
-
-        function startDemo() {
-            userLocation = { lat: 35.6812, lng: 139.7671 };
-            showMainScreen();
-        }
+        let currentPolyline = null; // 現在のポリラインを保持
 
         function getLocation() {
             if (navigator.geolocation) {
@@ -131,7 +123,7 @@
                         showMainScreen();
                     },
                     (error) => {
-                        alert('位置情報取得に失敗しました。デモモードをお試しください。');
+                        alert('位置情報取得に失敗しました。');
                     }
                 );
             }
@@ -151,14 +143,6 @@
                     position: userLocation,
                     map: map,
                     title: '現在地'
-                });
-
-                directionsRenderer = new google.maps.DirectionsRenderer({
-                    map: map,
-                    polylineOptions: {
-                        strokeColor: '#22c55e',
-                        strokeWeight: 5
-                    }
                 });
             }, 100);
         }
@@ -186,9 +170,18 @@
             button.disabled = true;
             button.textContent = '⏳ ルート作成中...';
 
+            // 前回のポリラインを削除
+            if (currentPolyline) {
+                currentPolyline.setMap(null);
+                currentPolyline = null;
+            }
+
             try {
                 const targetDistance = (currentSteps * 0.7) / 1000;
                 const waypoints = generateWaypoints(userLocation, targetDistance);
+                
+                // 大通り避ける設定を取得
+                const avoidHighways = document.getElementById('avoidHighways').checked;
 
                 // Vercelのバックエンドを呼び出す
                 const response = await fetch('/api/directions', {
@@ -199,7 +192,8 @@
                     body: JSON.stringify({
                         origin: userLocation,
                         destination: userLocation,
-                        waypoints: waypoints
+                        waypoints: waypoints,
+                        avoidHighways: avoidHighways
                     })
                 });
 
@@ -207,8 +201,26 @@
 
                 if (data.status === 'OK' && data.routes && data.routes.length > 0) {
                     currentRoute = data.routes[0];
-                    directionsRenderer.setDirections(data);
 
+                    // ポリラインを手動でデコードして描画
+                    const path = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points);
+                    
+                    // 新しいポリラインを作成して保存
+                    currentPolyline = new google.maps.Polyline({
+                        path: path,
+                        geodesic: true,
+                        strokeColor: '#22c55e',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 5,
+                        map: map
+                    });
+
+                    // 地図の表示範囲を調整
+                    const bounds = new google.maps.LatLngBounds();
+                    path.forEach(point => bounds.extend(point));
+                    map.fitBounds(bounds);
+
+                    // ルート情報を計算
                     let totalDistance = 0;
                     let totalDuration = 0;
 
@@ -227,7 +239,7 @@
 
                     document.getElementById('routeInfo').classList.remove('hidden');
                 } else {
-                    alert('ルート作成に失敗しました');
+                    alert('ルート作成に失敗しました: ' + (data.error || data.status));
                 }
             } catch (error) {
                 alert('エラーが発生しました: ' + error.message);
@@ -269,7 +281,7 @@
             currentRoute.legs.forEach((leg, index) => {
                 if (index < currentRoute.legs.length - 1) {
                     const loc = leg.end_location;
-                    waypoints.push(`${loc.lat()},${loc.lng()}`);
+                    waypoints.push(`${loc.lat},${loc.lng}`);
                 }
             });
 
