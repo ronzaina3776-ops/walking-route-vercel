@@ -65,19 +65,22 @@
         <div id="destinationSection" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <h2 class="font-medium mb-3">📍 目的地</h2>
             
+            <!-- 地図から選択（一番上に） -->
+            <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mb-4 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">
+                🗺️ 地図から選択（おすすめ）
+            </button>
+            
             <!-- 登録済み目的地 -->
-            <div id="savedDestinations" class="space-y-2 mb-4">
-                <!-- 登録地がここに表示される -->
+            <div class="mb-3">
+                <div class="text-sm font-medium text-gray-600 mb-2">登録済みの目的地:</div>
+                <div id="savedDestinations" class="space-y-2">
+                    <!-- 登録地がここに表示される -->
+                </div>
             </div>
             
             <!-- 新しい目的地を追加 -->
-            <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all">
-                ＋ 新しい目的地を追加
-            </button>
-            
-            <!-- 地図から選択 -->
-            <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mt-3 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">
-                🗺️ 地図から選択
+            <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all text-sm">
+                ＋ または住所で追加
             </button>
             
             <!-- 選択中の目的地 -->
@@ -462,10 +465,13 @@
                     tempMarker.setMap(null);
                 }
                 
+                const selectedLat = e.latLng.lat();
+                const selectedLng = e.latLng.lng();
+                
                 selectedDestination = {
                     name: '地図で選択',
-                    lat: e.latLng.lat(),
-                    lng: e.latLng.lng()
+                    lat: selectedLat,
+                    lng: selectedLng
                 };
                 
                 if (destinationMarker) {
@@ -476,9 +482,10 @@
                     position: e.latLng,
                     map: map,
                     title: '選択した目的地',
+                    animation: google.maps.Animation.DROP,
                     icon: {
                         path: google.maps.SymbolPath.CIRCLE,
-                        scale: 12,
+                        scale: 15,
                         fillColor: '#EA4335',
                         fillOpacity: 1,
                         strokeColor: '#ffffff',
@@ -491,6 +498,30 @@
                 document.getElementById('mapSelectBtn').textContent = '🗺️ 地図から選択';
                 document.getElementById('mapSelectBtn').classList.remove('bg-green-100', 'text-green-700');
                 google.maps.event.removeListener(listener);
+                google.maps.event.removeListener(moveListener);
+                
+                // 保存するか確認
+                const shouldSave = confirm('この場所を保存しますか？\n\n「OK」→ 名前をつけて保存\n「キャンセル」→ 今回だけ使用');
+                
+                if (shouldSave) {
+                    const name = prompt('目的地の名前を入力してください\n（例: 自宅、職場、カフェ）', '');
+                    if (name && name.trim()) {
+                        const dest = {
+                            name: name.trim(),
+                            address: '地図で選択',
+                            lat: selectedLat,
+                            lng: selectedLng
+                        };
+                        
+                        const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
+                        destinations.push(dest);
+                        localStorage.setItem('savedDestinations', JSON.stringify(destinations));
+                        
+                        selectedDestination.name = name.trim();
+                        loadSavedDestinations();
+                        alert('保存しました！');
+                    }
+                }
             });
             
             // マウスムーブで仮マーカーを表示（プレビュー）
@@ -510,15 +541,6 @@
                             strokeWeight: 2
                         }
                     });
-                }
-            });
-            
-            // クリック後に moveListener も削除
-            const originalListener = listener;
-            google.maps.event.addListenerOnce(map, 'click', () => {
-                google.maps.event.removeListener(moveListener);
-                if (tempMarker) {
-                    tempMarker.setMap(null);
                 }
             });
         }
@@ -599,9 +621,17 @@
                     const directDistance = calculateDistance(userLocation, selectedDestination);
                     const detourDistance = targetDistance - directDistance;
                     
+                    console.log(`=== 片道モード ===`);
+                    console.log(`目標歩数: ${currentSteps}歩`);
+                    console.log(`目標距離: ${targetDistance.toFixed(2)}km`);
+                    console.log(`直線距離: ${directDistance.toFixed(2)}km (${Math.round((directDistance / 0.7) * 1000)}歩)`);
+                    console.log(`必要な寄り道: ${detourDistance.toFixed(2)}km (${Math.round((detourDistance / 0.7) * 1000)}歩)`);
+                    
                     let waypoints = [];
                     if (detourDistance > 0) {
                         waypoints = generateDetourWaypoints(userLocation, selectedDestination, detourDistance);
+                    } else {
+                        console.log('直線距離の方が長いため、最短ルートを使用');
                     }
                     
                     const response = await fetch('/api/directions', {
@@ -621,6 +651,16 @@
 
                     if (data.status === 'OK' && data.routes && data.routes.length > 0) {
                         allRoutes = [data.routes[0]];
+                        
+                        // 実際のルート距離を表示
+                        let actualDistance = 0;
+                        data.routes[0].legs.forEach(leg => {
+                            actualDistance += leg.distance.value;
+                        });
+                        const actualSteps = Math.round((actualDistance / 1000) / 0.7 * 1000);
+                        console.log(`実際のルート距離: ${(actualDistance / 1000).toFixed(2)}km (${actualSteps}歩)`);
+                        console.log(`精度: ${((actualSteps / currentSteps) * 100).toFixed(1)}%`);
+                        
                         displayRoute(0);
                         document.getElementById('routeSwitch').classList.add('hidden');
                     } else {
@@ -639,30 +679,38 @@
         function generateDetourWaypoints(origin, destination, detourDistanceKm) {
             const waypoints = [];
             
+            console.log(`=== 寄り道計算 ===`);
+            console.log(`必要な寄り道距離: ${detourDistanceKm.toFixed(2)}km`);
+            
             // 寄り道距離に応じてウェイポイント数を決定
             let numWaypoints;
             if (detourDistanceKm < 1.0) {
                 numWaypoints = 2;
             } else if (detourDistanceKm < 2.0) {
                 numWaypoints = 3;
-            } else if (detourDistanceKm < 3.0) {
+            } else if (detourDistanceKm < 3.5) {
                 numWaypoints = 4;
-            } else {
+            } else if (detourDistanceKm < 5.0) {
                 numWaypoints = 5;
+            } else {
+                numWaypoints = 6;
             }
+            
+            console.log(`ウェイポイント数: ${numWaypoints}`);
             
             // 現在地→目的地の直線距離
             const directDistance = calculateDistance(origin, destination);
             
-            // 寄り道の半径（係数で調整）
-            // 必要な寄り道距離から逆算
-            const radiusKm = detourDistanceKm / 6.5; // 係数を調整
+            // 寄り道の半径（係数を大幅に小さく: 6.5 → 4.0）
+            const radiusKm = detourDistanceKm / 4.0;
+            console.log(`寄り道半径: ${radiusKm.toFixed(2)}km`);
             
             // 進行方向の角度を計算
             const mainAngle = Math.atan2(destination.lng - origin.lng, destination.lat - origin.lat);
             
             // 左右どちらに寄り道するかランダムで決定
             const side = Math.random() > 0.5 ? 1 : -1;
+            console.log(`寄り道方向: ${side > 0 ? '右' : '左'}`);
             
             // 中間地点を基準点とする
             const midLat = (origin.lat + destination.lat) / 2;
@@ -670,8 +718,8 @@
             
             // ウェイポイントを生成
             for (let i = 0; i < numWaypoints; i++) {
-                // 進行方向に沿った位置（0.2～0.8の範囲で配置）
-                const progress = 0.2 + (i / (numWaypoints - 1)) * 0.6;
+                // 進行方向に沿った位置（0.15～0.85の範囲で配置）
+                const progress = 0.15 + (i / (numWaypoints - 1)) * 0.7;
                 
                 // ベース位置（現在地→目的地のライン上）
                 const baseLat = origin.lat + (destination.lat - origin.lat) * progress;
@@ -692,7 +740,7 @@
                 waypoints.push({ lat, lng });
             }
             
-            console.log(`寄り道ウェイポイント数: ${numWaypoints}, 目標寄り道距離: ${detourDistanceKm.toFixed(2)}km`);
+            console.log(`生成したウェイポイント:`, waypoints);
             
             return waypoints;
         }
