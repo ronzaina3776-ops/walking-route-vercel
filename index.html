@@ -41,6 +41,50 @@
             </div>
         </div>
 
+        <!-- モード選択 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <h2 class="font-medium mb-3">モード選択</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="setMode('loop')" id="loopModeBtn" class="p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all">
+                    <div class="text-2xl mb-2">🔄</div>
+                    <div class="font-bold">周回モード</div>
+                    <div class="text-xs text-gray-600 mt-1">スタート地点に戻る</div>
+                </button>
+                <button onclick="setMode('oneway')" id="onewayModeBtn" class="p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all">
+                    <div class="text-2xl mb-2">➡️</div>
+                    <div class="font-bold">片道モード</div>
+                    <div class="text-xs text-gray-600 mt-1">目的地まで寄り道</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 片道モード: 目的地選択 -->
+        <div id="destinationSection" class="bg-white rounded-2xl shadow-lg p-6 hidden">
+            <h2 class="font-medium mb-3">📍 目的地</h2>
+            
+            <!-- 登録済み目的地 -->
+            <div id="savedDestinations" class="space-y-2 mb-4">
+                <!-- 登録地がここに表示される -->
+            </div>
+            
+            <!-- 新しい目的地を追加 -->
+            <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all">
+                ＋ 新しい目的地を追加
+            </button>
+            
+            <!-- 地図から選択 -->
+            <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mt-3 py-2 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200 transition-all">
+                🗺️ 地図から選択
+            </button>
+            
+            <!-- 選択中の目的地 -->
+            <div id="selectedDestinationDisplay" class="mt-4 p-3 bg-blue-50 rounded-lg hidden">
+                <div class="text-sm text-gray-600">選択中の目的地:</div>
+                <div id="selectedDestinationName" class="font-bold text-lg"></div>
+                <div id="selectedDestinationDistance" class="text-sm text-gray-600 mt-1"></div>
+            </div>
+        </div>
+
         <!-- 歩数設定 -->
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="font-medium mb-3">目標歩数</h2>
@@ -115,7 +159,39 @@
 
     </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry"></script>
+    <!-- 目的地追加モーダル -->
+    <div id="addDestinationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h2 class="text-xl font-bold mb-4">新しい目的地を追加</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">名前</label>
+                    <input type="text" id="destName" placeholder="例: 自宅、職場、カフェ" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">住所</label>
+                    <input type="text" id="destAddress" placeholder="住所を入力" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
+                </div>
+                
+                <div class="text-sm text-gray-500">
+                    または地図から選択してください
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeAddDestination()" class="flex-1 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+                    キャンセル
+                </button>
+                <button onclick="saveDestination()" class="flex-1 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry,places"></script>
     <script>
         let map = null;
         let userLocation = null;
@@ -123,6 +199,11 @@
         let currentRoute = null;
         let currentPolyline = null;
         let allRoutes = [];
+        let currentMode = 'loop'; // 'loop' or 'oneway'
+        let selectedDestination = null;
+        let destinationMarker = null;
+        let isSelectingFromMap = false;
+        let geocoder = null;
 
         function getLocation() {
             if (navigator.geolocation) {
@@ -148,12 +229,52 @@
                     zoom: 15
                 });
 
+                geocoder = new google.maps.Geocoder();
+
                 new google.maps.Marker({
                     position: userLocation,
                     map: map,
-                    title: '現在地'
+                    title: '現在地',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#4285F4',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
                 });
+
+                loadSavedDestinations();
             }, 100);
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // ボタンのスタイル切り替え
+            const loopBtn = document.getElementById('loopModeBtn');
+            const onewayBtn = document.getElementById('onewayModeBtn');
+            
+            if (mode === 'loop') {
+                loopBtn.className = 'p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all';
+                onewayBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
+                document.getElementById('destinationSection').classList.add('hidden');
+                document.getElementById('createRouteBtn').textContent = '🗺️ ルートを作成（3パターン生成）';
+            } else {
+                loopBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
+                onewayBtn.className = 'p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all';
+                document.getElementById('destinationSection').classList.remove('hidden');
+                document.getElementById('createRouteBtn').textContent = '🗺️ ルートを作成';
+            }
+
+            // 前のルートをクリア
+            if (currentPolyline) {
+                currentPolyline.setMap(null);
+                currentPolyline = null;
+            }
+            document.getElementById('routeInfo').classList.add('hidden');
+            document.getElementById('routeSwitch').classList.add('hidden');
         }
 
         function updateSteps(value) {
@@ -161,6 +282,11 @@
             document.getElementById('stepsDisplay').textContent = currentSteps.toLocaleString();
             const distance = ((currentSteps * 0.7) / 1000).toFixed(1);
             document.getElementById('distanceDisplay').textContent = `歩 (${distance}km)`;
+            
+            // 片道モードで目的地が選択されている場合、寄り道分を更新
+            if (currentMode === 'oneway' && selectedDestination) {
+                updateDestinationDisplay();
+            }
         }
 
         function setSteps(value) {
@@ -169,15 +295,199 @@
             updateSteps(value);
         }
 
+        // 登録済み目的地を読み込む
+        function loadSavedDestinations() {
+            const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
+            const container = document.getElementById('savedDestinations');
+            container.innerHTML = '';
+            
+            if (destinations.length === 0) {
+                container.innerHTML = '<div class="text-sm text-gray-500 py-2">登録された目的地はありません</div>';
+                return;
+            }
+            
+            destinations.forEach((dest, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full p-3 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all text-left relative';
+                button.innerHTML = `
+                    <div class="font-medium">${dest.name}</div>
+                    <div class="text-xs text-gray-500 mt-1">${dest.address || '住所なし'}</div>
+                    <button onclick="deleteDestination(${index}); event.stopPropagation();" class="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xl">&times;</button>
+                `;
+                button.onclick = () => selectDestination(dest);
+                container.appendChild(button);
+            });
+        }
+
+        function showAddDestination() {
+            document.getElementById('addDestinationModal').classList.remove('hidden');
+        }
+
+        function closeAddDestination() {
+            document.getElementById('addDestinationModal').classList.add('hidden');
+            document.getElementById('destName').value = '';
+            document.getElementById('destAddress').value = '';
+        }
+
+        async function saveDestination() {
+            const name = document.getElementById('destName').value.trim();
+            const address = document.getElementById('destAddress').value.trim();
+            
+            if (!name) {
+                alert('名前を入力してください');
+                return;
+            }
+            
+            if (!address) {
+                alert('住所を入力してください');
+                return;
+            }
+            
+            // 住所から座標を取得
+            try {
+                const results = await new Promise((resolve, reject) => {
+                    geocoder.geocode({ address: address }, (results, status) => {
+                        if (status === 'OK') {
+                            resolve(results);
+                        } else {
+                            reject(status);
+                        }
+                    });
+                });
+                
+                const location = results[0].geometry.location;
+                const dest = {
+                    name: name,
+                    address: results[0].formatted_address,
+                    lat: location.lat(),
+                    lng: location.lng()
+                };
+                
+                const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
+                destinations.push(dest);
+                localStorage.setItem('savedDestinations', JSON.stringify(destinations));
+                
+                closeAddDestination();
+                loadSavedDestinations();
+            } catch (error) {
+                alert('住所が見つかりませんでした。正しい住所を入力してください。');
+            }
+        }
+
+        function deleteDestination(index) {
+            if (!confirm('この目的地を削除しますか？')) return;
+            
+            const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
+            destinations.splice(index, 1);
+            localStorage.setItem('savedDestinations', JSON.stringify(destinations));
+            
+            if (selectedDestination && selectedDestination.index === index) {
+                selectedDestination = null;
+                document.getElementById('selectedDestinationDisplay').classList.add('hidden');
+                if (destinationMarker) {
+                    destinationMarker.setMap(null);
+                    destinationMarker = null;
+                }
+            }
+            
+            loadSavedDestinations();
+        }
+
+        function selectDestination(dest) {
+            selectedDestination = { ...dest };
+            
+            // 地図にマーカーを表示
+            if (destinationMarker) {
+                destinationMarker.setMap(null);
+            }
+            
+            destinationMarker = new google.maps.Marker({
+                position: { lat: dest.lat, lng: dest.lng },
+                map: map,
+                title: dest.name,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: '#EA4335',
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2
+                }
+            });
+            
+            updateDestinationDisplay();
+        }
+
+        function updateDestinationDisplay() {
+            if (!selectedDestination) return;
+            
+            const directDistance = calculateDistance(userLocation, selectedDestination);
+            const directSteps = Math.round((directDistance / 0.7) * 1000);
+            const targetDistance = (currentSteps * 0.7) / 1000;
+            const detourDistance = targetDistance - directDistance;
+            
+            document.getElementById('selectedDestinationName').textContent = selectedDestination.name;
+            
+            if (detourDistance > 0) {
+                document.getElementById('selectedDestinationDistance').textContent = 
+                    `直線: ${directDistance.toFixed(1)}km (${directSteps.toLocaleString()}歩) + 寄り道: ${detourDistance.toFixed(1)}km (${Math.round((detourDistance / 0.7) * 1000).toLocaleString()}歩)`;
+            } else {
+                document.getElementById('selectedDestinationDistance').textContent = 
+                    `直線距離: ${directDistance.toFixed(1)}km (${directSteps.toLocaleString()}歩) ※設定歩数より長いため最短ルートになります`;
+            }
+            
+            document.getElementById('selectedDestinationDisplay').classList.remove('hidden');
+        }
+
+        function selectFromMap() {
+            alert('地図上をクリックして目的地を選択してください');
+            isSelectingFromMap = true;
+            
+            const listener = map.addListener('click', (e) => {
+                selectedDestination = {
+                    name: '地図で選択',
+                    lat: e.latLng.lat(),
+                    lng: e.latLng.lng()
+                };
+                
+                if (destinationMarker) {
+                    destinationMarker.setMap(null);
+                }
+                
+                destinationMarker = new google.maps.Marker({
+                    position: e.latLng,
+                    map: map,
+                    title: '選択した目的地',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: '#EA4335',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
+                });
+                
+                updateDestinationDisplay();
+                isSelectingFromMap = false;
+                google.maps.event.removeListener(listener);
+            });
+        }
+
         async function createRoute() {
             if (!map || !userLocation) {
                 alert('地図がまだ準備できていません');
                 return;
             }
 
+            if (currentMode === 'oneway' && !selectedDestination) {
+                alert('目的地を選択してください');
+                return;
+            }
+
             const button = document.getElementById('createRouteBtn');
             button.disabled = true;
-            button.textContent = '⏳ ルート作成中...（3パターン）';
+            button.textContent = currentMode === 'loop' ? '⏳ ルート作成中...（3パターン）' : '⏳ ルート作成中...';
 
             // 前回のポリラインを削除
             if (currentPolyline) {
@@ -189,70 +499,135 @@
                 const targetDistance = (currentSteps * 0.7) / 1000;
                 const avoidHighways = document.getElementById('avoidHighways').checked;
 
-                // 3つの異なるルートを生成
-                allRoutes = [];
-                const routePromises = [];
+                if (currentMode === 'loop') {
+                    // 周回モード
+                    allRoutes = [];
+                    const routePromises = [];
 
-                for (let i = 0; i < 3; i++) {
-                    // 異なるウェイポイントを生成（シードを変える）
-                    const waypoints = generateWaypoints(userLocation, targetDistance, i * 1000);
+                    for (let i = 0; i < 3; i++) {
+                        const waypoints = generateWaypoints(userLocation, targetDistance, i * 1000);
+                        
+                        const promise = fetch('/api/directions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                origin: userLocation,
+                                destination: userLocation,
+                                waypoints: waypoints,
+                                avoidHighways: avoidHighways
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+                                return data.routes[0];
+                            }
+                            return null;
+                        });
+
+                        routePromises.push(promise);
+                    }
+
+                    const routes = await Promise.all(routePromises);
+                    allRoutes = routes.filter(route => route !== null);
+
+                    console.log(`${allRoutes.length}個のルートが生成されました`);
+
+                    if (allRoutes.length > 0) {
+                        displayRoute(0);
+                        if (allRoutes.length > 1) {
+                            showRouteSelection();
+                        } else {
+                            document.getElementById('routeSwitch').classList.add('hidden');
+                        }
+                    } else {
+                        alert('ルート作成に失敗しました');
+                    }
+                } else {
+                    // 片道モード
+                    const directDistance = calculateDistance(userLocation, selectedDestination);
+                    const detourDistance = targetDistance - directDistance;
                     
-                    // APIリクエストを作成
-                    const promise = fetch('/api/directions', {
+                    let waypoints = [];
+                    if (detourDistance > 0) {
+                        waypoints = generateDetourWaypoints(userLocation, selectedDestination, detourDistance);
+                    }
+                    
+                    const response = await fetch('/api/directions', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             origin: userLocation,
-                            destination: userLocation,
+                            destination: selectedDestination,
                             waypoints: waypoints,
                             avoidHighways: avoidHighways
                         })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-                            return data.routes[0];
-                        }
-                        return null;
                     });
 
-                    routePromises.push(promise);
-                }
+                    const data = await response.json();
 
-                // 全てのルート生成を待つ
-                const routes = await Promise.all(routePromises);
-                
-                // nullでないルートだけを保存
-                allRoutes = routes.filter(route => route !== null);
-
-                console.log(`${allRoutes.length}個のルートが生成されました`);
-
-                if (allRoutes.length > 0) {
-                    // 最初のルートを表示
-                    displayRoute(0);
-
-                    // 複数ルートがある場合、選択ボタンを表示
-                    if (allRoutes.length > 1) {
-                        showRouteSelection();
-                    } else {
+                    if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+                        allRoutes = [data.routes[0]];
+                        displayRoute(0);
                         document.getElementById('routeSwitch').classList.add('hidden');
+                    } else {
+                        alert('ルート作成に失敗しました: ' + (data.error || data.status));
                     }
-                } else {
-                    alert('ルート作成に失敗しました');
                 }
             } catch (error) {
                 alert('エラーが発生しました: ' + error.message);
             } finally {
                 button.disabled = false;
-                button.textContent = '🗺️ ルートを作成（3パターン生成）';
+                button.textContent = currentMode === 'loop' ? '🗺️ ルートを作成（3パターン生成）' : '🗺️ ルートを作成';
             }
+        }
+
+        // 寄り道ウェイポイントを生成（片道モード用）
+        function generateDetourWaypoints(origin, destination, detourDistanceKm) {
+            const waypoints = [];
+            
+            // 中間地点を計算
+            const midLat = (origin.lat + destination.lat) / 2;
+            const midLng = (origin.lng + destination.lng) / 2;
+            
+            // 進行方向の角度を計算
+            const angle = Math.atan2(destination.lng - origin.lng, destination.lat - origin.lat);
+            
+            // 垂直方向の角度（左右に寄り道）
+            const perpAngle1 = angle + Math.PI / 2;
+            const perpAngle2 = angle - Math.PI / 2;
+            
+            // 寄り道の距離（両側に分散）
+            const sideDistance = detourDistanceKm / 4; // 往復分で4で割る
+            
+            // ランダムでどちらに寄り道するか決める
+            const direction = Math.random() > 0.5 ? perpAngle1 : perpAngle2;
+            
+            // 寄り道ポイント1（中間地点の手前）
+            const detour1Lat = origin.lat + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.3 / 111) * Math.cos(angle) + 
+                               (sideDistance / 111) * Math.cos(direction);
+            const detour1Lng = origin.lng + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.3 / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(angle) + 
+                               (sideDistance / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(direction);
+            
+            waypoints.push({ lat: detour1Lat, lng: detour1Lng });
+            
+            // 寄り道ポイント2（中間地点の先）
+            const detour2Lat = origin.lat + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.7 / 111) * Math.cos(angle) + 
+                               (sideDistance / 111) * Math.cos(direction);
+            const detour2Lng = origin.lng + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.7 / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(angle) + 
+                               (sideDistance / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(direction);
+            
+            waypoints.push({ lat: detour2Lat, lng: detour2Lng });
+            
+            return waypoints;
         }
 
         // ルートを表示する関数
         function displayRoute(routeIndex) {
-            // 前回のポリラインを削除
             if (currentPolyline) {
                 currentPolyline.setMap(null);
                 currentPolyline = null;
@@ -260,10 +635,8 @@
 
             currentRoute = allRoutes[routeIndex];
 
-            // ポリラインを手動でデコードして描画
             const path = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points);
             
-            // 新しいポリラインを作成して保存
             currentPolyline = new google.maps.Polyline({
                 path: path,
                 geodesic: true,
@@ -273,12 +646,10 @@
                 map: map
             });
 
-            // 地図の表示範囲を調整
             const bounds = new google.maps.LatLngBounds();
             path.forEach(point => bounds.extend(point));
             map.fitBounds(bounds);
 
-            // ルート情報を計算
             let totalDistance = 0;
             let totalDuration = 0;
 
@@ -304,7 +675,6 @@
             routeSwitchContainer.innerHTML = '';
 
             allRoutes.forEach((route, index) => {
-                // 各ルートの情報を計算
                 let totalDistance = 0;
                 route.legs.forEach(leg => {
                     totalDistance += leg.distance.value;
@@ -313,7 +683,6 @@
                 const distanceKm = (totalDistance / 1000).toFixed(1);
                 const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
 
-                // ボタンを作成（簡易版）
                 const button = document.createElement('button');
                 button.className = 'flex-1 py-3 px-4 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all font-medium';
                 button.innerHTML = `
@@ -324,7 +693,6 @@
                 `;
                 button.onclick = () => {
                     displayRoute(index);
-                    // 選択されたボタンをハイライト
                     document.querySelectorAll('#routeSwitchButtons button').forEach(btn => {
                         btn.classList.remove('border-green-500', 'bg-green-50');
                         btn.classList.add('border-gray-200');
@@ -336,7 +704,6 @@
                 routeSwitchContainer.appendChild(button);
             });
 
-            // 最初のボタンをハイライト
             const firstButton = routeSwitchContainer.querySelector('button');
             if (firstButton) {
                 firstButton.classList.add('border-green-500', 'bg-green-50');
@@ -353,10 +720,8 @@
             const numWaypoints = 4;
             const radiusKm = targetDistanceKm / 7.45;
             
-            // 最小距離をより大きく（0.8 → 1.0）
             const minDistanceBetweenWaypoints = radiusKm * 1.0;
             
-            // 開始角度をランダムに設定
             const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
             let attempts = 0;
@@ -365,13 +730,8 @@
             while (waypoints.length < numWaypoints && attempts < maxAttempts) {
                 const i = waypoints.length;
                 const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-                
-                // ランダム要素をさらに減らす（0.25 → 0.15）
-                // より均等な円周配置にする
                 const randomOffset = (Math.random() - 0.5) * 0.15;
                 const angle = startAngle + baseAngle + randomOffset;
-                
-                // 距離のばらつきも減らす（0.95-1.05 → 0.97-1.03）
                 const distance = radiusKm * (0.97 + Math.random() * 0.06);
 
                 const lat = center.lat + (distance / 111) * Math.cos(angle);
@@ -379,7 +739,6 @@
 
                 const newWaypoint = { lat, lng };
 
-                // 既存のウェイポイントとの距離をチェック
                 let tooClose = false;
                 for (const existingWaypoint of waypoints) {
                     const dist = calculateDistance(existingWaypoint, newWaypoint);
@@ -396,7 +755,6 @@
                 }
             }
 
-            // もし十分なウェイポイントが生成できなかった場合は、制約を緩めて再生成
             if (waypoints.length < numWaypoints) {
                 console.log('最小距離制約を緩めて再生成');
                 return generateWaypointsSimple(center, targetDistanceKm, seed);
@@ -405,7 +763,6 @@
             return waypoints;
         }
 
-        // シンプル版（制約なし）- バックアップ用
         function generateWaypointsSimple(center, targetDistanceKm, seed = 0) {
             const waypoints = [];
             const timeSeed = (Date.now() % 1000 + seed) / 1000;
@@ -428,9 +785,8 @@
             return waypoints;
         }
 
-        // 2点間の距離を計算（km）
         function calculateDistance(point1, point2) {
-            const R = 6371; // 地球の半径（km）
+            const R = 6371;
             const dLat = (point2.lat - point1.lat) * Math.PI / 180;
             const dLng = (point2.lng - point1.lng) * Math.PI / 180;
             const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -455,8 +811,16 @@
             });
 
             const origin = `${userLocation.lat},${userLocation.lng}`;
+            let destination;
+            
+            if (currentMode === 'loop') {
+                destination = origin;
+            } else {
+                destination = `${selectedDestination.lat},${selectedDestination.lng}`;
+            }
+            
             const waypointsParam = waypoints.join('|');
-            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${origin}&waypoints=${waypointsParam}&travelmode=walking`;
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsParam}&travelmode=walking`;
 
             window.open(url, '_blank');
         }
