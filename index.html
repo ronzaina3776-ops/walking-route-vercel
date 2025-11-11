@@ -105,6 +105,14 @@
             </button>
         </div>
 
+        <!-- ルート選択 -->
+        <div id="routeSelection" class="bg-white rounded-2xl shadow-lg p-6 hidden">
+            <h2 class="text-lg font-bold mb-4">🗺️ 他のルート候補</h2>
+            <div id="routeButtons" class="space-y-3">
+                <!-- ルートボタンがここに追加される -->
+            </div>
+        </div>
+
     </div>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry"></script>
@@ -113,7 +121,8 @@
         let userLocation = null;
         let currentSteps = 5000;
         let currentRoute = null;
-        let currentPolyline = null; // 現在のポリラインを保持
+        let currentPolyline = null;
+        let allRoutes = []; // 全てのルート候補を保存
 
         function getLocation() {
             if (navigator.geolocation) {
@@ -200,44 +209,19 @@
                 const data = await response.json();
 
                 if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-                    currentRoute = data.routes[0];
+                    // 全てのルートを保存
+                    allRoutes = data.routes;
+                    console.log(`${allRoutes.length}個のルートが見つかりました`);
 
-                    // ポリラインを手動でデコードして描画
-                    const path = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points);
-                    
-                    // 新しいポリラインを作成して保存
-                    currentPolyline = new google.maps.Polyline({
-                        path: path,
-                        geodesic: true,
-                        strokeColor: '#22c55e',
-                        strokeOpacity: 1.0,
-                        strokeWeight: 5,
-                        map: map
-                    });
+                    // 最初のルートを表示
+                    displayRoute(0);
 
-                    // 地図の表示範囲を調整
-                    const bounds = new google.maps.LatLngBounds();
-                    path.forEach(point => bounds.extend(point));
-                    map.fitBounds(bounds);
-
-                    // ルート情報を計算
-                    let totalDistance = 0;
-                    let totalDuration = 0;
-
-                    currentRoute.legs.forEach(leg => {
-                        totalDistance += leg.distance.value;
-                        totalDuration += leg.duration.value;
-                    });
-
-                    const distanceKm = (totalDistance / 1000).toFixed(1);
-                    const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
-                    const timeMinutes = Math.round(totalDuration / 60);
-
-                    document.getElementById('routeDistance').textContent = distanceKm;
-                    document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
-                    document.getElementById('routeTime').textContent = timeMinutes;
-
-                    document.getElementById('routeInfo').classList.remove('hidden');
+                    // 複数ルートがある場合、選択ボタンを表示
+                    if (allRoutes.length > 1) {
+                        showRouteSelection();
+                    } else {
+                        document.getElementById('routeSelection').classList.add('hidden');
+                    }
                 } else {
                     alert('ルート作成に失敗しました: ' + (data.error || data.status));
                 }
@@ -249,31 +233,129 @@
             }
         }
 
+        // ルートを表示する関数
+        function displayRoute(routeIndex) {
+            // 前回のポリラインを削除
+            if (currentPolyline) {
+                currentPolyline.setMap(null);
+                currentPolyline = null;
+            }
+
+            currentRoute = allRoutes[routeIndex];
+
+            // ポリラインを手動でデコードして描画
+            const path = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points);
+            
+            // 新しいポリラインを作成して保存
+            currentPolyline = new google.maps.Polyline({
+                path: path,
+                geodesic: true,
+                strokeColor: '#22c55e',
+                strokeOpacity: 1.0,
+                strokeWeight: 5,
+                map: map
+            });
+
+            // 地図の表示範囲を調整
+            const bounds = new google.maps.LatLngBounds();
+            path.forEach(point => bounds.extend(point));
+            map.fitBounds(bounds);
+
+            // ルート情報を計算
+            let totalDistance = 0;
+            let totalDuration = 0;
+
+            currentRoute.legs.forEach(leg => {
+                totalDistance += leg.distance.value;
+                totalDuration += leg.duration.value;
+            });
+
+            const distanceKm = (totalDistance / 1000).toFixed(1);
+            const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
+            const timeMinutes = Math.round(totalDuration / 60);
+
+            document.getElementById('routeDistance').textContent = distanceKm;
+            document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
+            document.getElementById('routeTime').textContent = timeMinutes;
+
+            document.getElementById('routeInfo').classList.remove('hidden');
+        }
+
+        // ルート選択ボタンを表示する関数
+        function showRouteSelection() {
+            const routeButtonsContainer = document.getElementById('routeButtons');
+            routeButtonsContainer.innerHTML = '';
+
+            allRoutes.forEach((route, index) => {
+                // 各ルートの情報を計算
+                let totalDistance = 0;
+                let totalDuration = 0;
+                route.legs.forEach(leg => {
+                    totalDistance += leg.distance.value;
+                    totalDuration += leg.duration.value;
+                });
+
+                const distanceKm = (totalDistance / 1000).toFixed(1);
+                const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
+                const timeMinutes = Math.round(totalDuration / 60);
+
+                // ボタンを作成
+                const button = document.createElement('button');
+                button.className = 'w-full p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all text-left';
+                button.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-gray-800">ルート ${index + 1}</div>
+                            <div class="text-sm text-gray-600 mt-1">${distanceKm}km · ${actualSteps.toLocaleString()}歩 · ${timeMinutes}分</div>
+                        </div>
+                        <div class="text-2xl">${index === 0 ? '🟢' : index === 1 ? '🔵' : '🟠'}</div>
+                    </div>
+                `;
+                button.onclick = () => {
+                    displayRoute(index);
+                    // 選択されたボタンをハイライト
+                    document.querySelectorAll('#routeButtons button').forEach(btn => {
+                        btn.classList.remove('border-green-500', 'bg-green-50');
+                        btn.classList.add('border-gray-200');
+                    });
+                    button.classList.add('border-green-500', 'bg-green-50');
+                    button.classList.remove('border-gray-200');
+                };
+
+                routeButtonsContainer.appendChild(button);
+            });
+
+            // 最初のボタンをハイライト
+            const firstButton = routeButtonsContainer.querySelector('button');
+            if (firstButton) {
+                firstButton.classList.add('border-green-500', 'bg-green-50');
+                firstButton.classList.remove('border-gray-200');
+            }
+
+            document.getElementById('routeSelection').classList.remove('hidden');
+        }
+
         function generateWaypoints(center, targetDistanceKm) {
-    const waypoints = [];
-    const timeSeed = Date.now() % 1000 / 1000;
-    
-    const numWaypoints = 3;
-    
-    // 係数を調整（9 → 7.5）
-    const radiusKm = targetDistanceKm / 7.0;
-    
-    const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
+            const waypoints = [];
+            const timeSeed = Date.now() % 1000 / 1000;
+            const numWaypoints = 3 + Math.floor(Math.random() * 2);
+            const radiusKm = targetDistanceKm / 6;
+            const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
-    for (let i = 0; i < numWaypoints; i++) {
-        const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-        const randomOffset = (Math.random() - 0.5) * 0.3;
-        const angle = startAngle + baseAngle + randomOffset;
-        const distance = radiusKm * (0.95 + Math.random() * 0.1);
+            for (let i = 0; i < numWaypoints; i++) {
+                const baseAngle = (Math.PI * 2 / numWaypoints) * i;
+                const randomOffset = (Math.random() - 0.5) * 0.4;
+                const angle = startAngle + baseAngle + randomOffset;
+                const distance = radiusKm * (0.9 + Math.random() * 0.2);
 
-        const lat = center.lat + (distance / 111) * Math.cos(angle);
-        const lng = center.lng + (distance / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle);
+                const lat = center.lat + (distance / 111) * Math.cos(angle);
+                const lng = center.lng + (distance / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle);
 
-        waypoints.push({ lat, lng });
-    }
+                waypoints.push({ lat, lng });
+            }
 
-    return waypoints;
-}
+            return waypoints;
+        }
 
         function openInGoogleMaps() {
             if (!currentRoute || !userLocation) {
