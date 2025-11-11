@@ -253,20 +253,17 @@
     const waypoints = [];
     const timeSeed = Date.now() % 1000 / 1000;
     
-    // ウェイポイント数を固定（3箇所）
     const numWaypoints = 3;
     
-    // 係数を大きくして距離を短く（6 → 9）
-    const radiusKm = targetDistanceKm / 9;
+    // 係数を調整（9 → 7.5）
+    const radiusKm = targetDistanceKm / 7.5;
     
     const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
     for (let i = 0; i < numWaypoints; i++) {
         const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-        // ランダム要素を減らす（0.4 → 0.3）
         const randomOffset = (Math.random() - 0.5) * 0.3;
         const angle = startAngle + baseAngle + randomOffset;
-        // ランダム範囲を狭く（0.9-1.1 → 0.95-1.05）
         const distance = radiusKm * (0.95 + Math.random() * 0.1);
 
         const lat = center.lat + (distance / 111) * Math.cos(angle);
