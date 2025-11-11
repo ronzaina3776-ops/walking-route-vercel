@@ -6,7 +6,10 @@
     <title>お散歩ルート作成</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: 450px; width: 100%; }
+        #map { height: 500px; width: 100%; }
+        @media (max-width: 640px) {
+            #map { height: 400px; }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
@@ -73,7 +76,7 @@
             </button>
             
             <!-- 地図から選択 -->
-            <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mt-3 py-2 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200 transition-all">
+            <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mt-3 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">
                 🗺️ 地図から選択
             </button>
             
@@ -405,15 +408,19 @@
                 position: { lat: dest.lat, lng: dest.lng },
                 map: map,
                 title: dest.name,
+                animation: google.maps.Animation.DROP,
                 icon: {
                     path: google.maps.SymbolPath.CIRCLE,
-                    scale: 10,
+                    scale: 15,
                     fillColor: '#EA4335',
                     fillOpacity: 1,
                     strokeColor: '#ffffff',
-                    strokeWeight: 2
+                    strokeWeight: 3
                 }
             });
+            
+            // 地図の中心を移動
+            map.panTo({ lat: dest.lat, lng: dest.lng });
             
             updateDestinationDisplay();
         }
@@ -440,10 +447,21 @@
         }
 
         function selectFromMap() {
-            alert('地図上をクリックして目的地を選択してください');
+            if (!map) return;
+            
             isSelectingFromMap = true;
+            document.getElementById('mapSelectBtn').textContent = '📍 地図をタップして目的地を選択中...';
+            document.getElementById('mapSelectBtn').classList.add('bg-green-100', 'text-green-700');
+            
+            // 一時的なマーカー
+            let tempMarker = null;
             
             const listener = map.addListener('click', (e) => {
+                // 一時マーカーを削除
+                if (tempMarker) {
+                    tempMarker.setMap(null);
+                }
+                
                 selectedDestination = {
                     name: '地図で選択',
                     lat: e.latLng.lat(),
@@ -460,17 +478,48 @@
                     title: '選択した目的地',
                     icon: {
                         path: google.maps.SymbolPath.CIRCLE,
-                        scale: 10,
+                        scale: 12,
                         fillColor: '#EA4335',
                         fillOpacity: 1,
                         strokeColor: '#ffffff',
-                        strokeWeight: 2
+                        strokeWeight: 3
                     }
                 });
                 
                 updateDestinationDisplay();
                 isSelectingFromMap = false;
+                document.getElementById('mapSelectBtn').textContent = '🗺️ 地図から選択';
+                document.getElementById('mapSelectBtn').classList.remove('bg-green-100', 'text-green-700');
                 google.maps.event.removeListener(listener);
+            });
+            
+            // マウスムーブで仮マーカーを表示（プレビュー）
+            const moveListener = map.addListener('mousemove', (e) => {
+                if (tempMarker) {
+                    tempMarker.setPosition(e.latLng);
+                } else {
+                    tempMarker = new google.maps.Marker({
+                        position: e.latLng,
+                        map: map,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 8,
+                            fillColor: '#EA4335',
+                            fillOpacity: 0.5,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2
+                        }
+                    });
+                }
+            });
+            
+            // クリック後に moveListener も削除
+            const originalListener = listener;
+            google.maps.event.addListenerOnce(map, 'click', () => {
+                google.maps.event.removeListener(moveListener);
+                if (tempMarker) {
+                    tempMarker.setMap(null);
+                }
             });
         }
 
@@ -590,38 +639,60 @@
         function generateDetourWaypoints(origin, destination, detourDistanceKm) {
             const waypoints = [];
             
-            // 中間地点を計算
+            // 寄り道距離に応じてウェイポイント数を決定
+            let numWaypoints;
+            if (detourDistanceKm < 1.0) {
+                numWaypoints = 2;
+            } else if (detourDistanceKm < 2.0) {
+                numWaypoints = 3;
+            } else if (detourDistanceKm < 3.0) {
+                numWaypoints = 4;
+            } else {
+                numWaypoints = 5;
+            }
+            
+            // 現在地→目的地の直線距離
+            const directDistance = calculateDistance(origin, destination);
+            
+            // 寄り道の半径（係数で調整）
+            // 必要な寄り道距離から逆算
+            const radiusKm = detourDistanceKm / 6.5; // 係数を調整
+            
+            // 進行方向の角度を計算
+            const mainAngle = Math.atan2(destination.lng - origin.lng, destination.lat - origin.lat);
+            
+            // 左右どちらに寄り道するかランダムで決定
+            const side = Math.random() > 0.5 ? 1 : -1;
+            
+            // 中間地点を基準点とする
             const midLat = (origin.lat + destination.lat) / 2;
             const midLng = (origin.lng + destination.lng) / 2;
             
-            // 進行方向の角度を計算
-            const angle = Math.atan2(destination.lng - origin.lng, destination.lat - origin.lat);
+            // ウェイポイントを生成
+            for (let i = 0; i < numWaypoints; i++) {
+                // 進行方向に沿った位置（0.2～0.8の範囲で配置）
+                const progress = 0.2 + (i / (numWaypoints - 1)) * 0.6;
+                
+                // ベース位置（現在地→目的地のライン上）
+                const baseLat = origin.lat + (destination.lat - origin.lat) * progress;
+                const baseLng = origin.lng + (destination.lng - origin.lng) * progress;
+                
+                // 垂直方向への寄り道距離（中央が最大）
+                // 山なりの形にする
+                const detourFactor = Math.sin(Math.PI * (i + 1) / (numWaypoints + 1));
+                const perpDistance = radiusKm * detourFactor * side;
+                
+                // 垂直方向の角度
+                const perpAngle = mainAngle + Math.PI / 2;
+                
+                // 最終的な座標
+                const lat = baseLat + (perpDistance / 111) * Math.cos(perpAngle);
+                const lng = baseLng + (perpDistance / (111 * Math.cos(baseLat * Math.PI / 180))) * Math.sin(perpAngle);
+                
+                waypoints.push({ lat, lng });
+            }
             
-            // 垂直方向の角度（左右に寄り道）
-            const perpAngle1 = angle + Math.PI / 2;
-            const perpAngle2 = angle - Math.PI / 2;
-            
-            // 寄り道の距離（両側に分散）
-            const sideDistance = detourDistanceKm / 4; // 往復分で4で割る
-            
-            // ランダムでどちらに寄り道するか決める
-            const direction = Math.random() > 0.5 ? perpAngle1 : perpAngle2;
-            
-            // 寄り道ポイント1（中間地点の手前）
-            const detour1Lat = origin.lat + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.3 / 111) * Math.cos(angle) + 
-                               (sideDistance / 111) * Math.cos(direction);
-            const detour1Lng = origin.lng + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.3 / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(angle) + 
-                               (sideDistance / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(direction);
-            
-            waypoints.push({ lat: detour1Lat, lng: detour1Lng });
-            
-            // 寄り道ポイント2（中間地点の先）
-            const detour2Lat = origin.lat + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.7 / 111) * Math.cos(angle) + 
-                               (sideDistance / 111) * Math.cos(direction);
-            const detour2Lng = origin.lng + (calculateDistance(origin, {lat: midLat, lng: midLng}) * 0.7 / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(angle) + 
-                               (sideDistance / (111 * Math.cos(origin.lat * Math.PI / 180))) * Math.sin(direction);
-            
-            waypoints.push({ lat: detour2Lat, lng: detour2Lng });
+            console.log(`寄り道ウェイポイント数: ${numWaypoints}, 目標寄り道距離: ${detourDistanceKm.toFixed(2)}km`);
             
             return waypoints;
         }
