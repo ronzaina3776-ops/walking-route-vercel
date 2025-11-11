@@ -79,9 +79,17 @@
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="text-lg font-bold mb-4">📍 地図</h2>
             <div id="map" class="rounded-xl border-2 border-gray-200"></div>
+            
+            <!-- ルート切り替えボタン（地図のすぐ下） -->
+            <div id="routeSwitch" class="mt-4 hidden">
+                <div class="text-sm font-medium text-gray-600 mb-2">ルートを選択:</div>
+                <div id="routeSwitchButtons" class="flex gap-2">
+                    <!-- ルート切り替えボタンがここに追加される -->
+                </div>
+            </div>
         </div>
 
-        <!-- ルート情報 -->
+        <!-- ルート情報（詳細） -->
         <div id="routeInfo" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <h2 class="text-lg font-bold mb-4">📊 ルート情報</h2>
             
@@ -103,14 +111,6 @@
             <button id="openInGoogleMaps" onclick="openInGoogleMaps()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-colors">
                 📱 Googleマップで開く
             </button>
-        </div>
-
-        <!-- ルート選択 -->
-        <div id="routeSelection" class="bg-white rounded-2xl shadow-lg p-6 hidden">
-            <h2 class="text-lg font-bold mb-4">🗺️ 他のルート候補</h2>
-            <div id="routeButtons" class="space-y-3">
-                <!-- ルートボタンがここに追加される -->
-            </div>
         </div>
 
     </div>
@@ -237,7 +237,7 @@
                     if (allRoutes.length > 1) {
                         showRouteSelection();
                     } else {
-                        document.getElementById('routeSelection').classList.add('hidden');
+                        document.getElementById('routeSwitch').classList.add('hidden');
                     }
                 } else {
                     alert('ルート作成に失敗しました');
@@ -298,40 +298,34 @@
             document.getElementById('routeInfo').classList.remove('hidden');
         }
 
-        // ルート選択ボタンを表示する関数
+        // ルート選択ボタンを表示する関数（地図の下に簡易版）
         function showRouteSelection() {
-            const routeButtonsContainer = document.getElementById('routeButtons');
-            routeButtonsContainer.innerHTML = '';
+            const routeSwitchContainer = document.getElementById('routeSwitchButtons');
+            routeSwitchContainer.innerHTML = '';
 
             allRoutes.forEach((route, index) => {
                 // 各ルートの情報を計算
                 let totalDistance = 0;
-                let totalDuration = 0;
                 route.legs.forEach(leg => {
                     totalDistance += leg.distance.value;
-                    totalDuration += leg.duration.value;
                 });
 
                 const distanceKm = (totalDistance / 1000).toFixed(1);
                 const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
-                const timeMinutes = Math.round(totalDuration / 60);
 
-                // ボタンを作成
+                // ボタンを作成（簡易版）
                 const button = document.createElement('button');
-                button.className = 'w-full p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all text-left';
+                button.className = 'flex-1 py-3 px-4 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all font-medium';
                 button.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <div class="font-bold text-gray-800">ルート ${index + 1}</div>
-                            <div class="text-sm text-gray-600 mt-1">${distanceKm}km · ${actualSteps.toLocaleString()}歩 · ${timeMinutes}分</div>
-                        </div>
-                        <div class="text-2xl">${index === 0 ? '🟢' : index === 1 ? '🔵' : '🟠'}</div>
+                    <div class="text-center">
+                        <div class="text-sm">${index === 0 ? '🟢' : index === 1 ? '🔵' : '🟠'} ルート${index + 1}</div>
+                        <div class="text-xs text-gray-600 mt-1">${distanceKm}km · ${actualSteps.toLocaleString()}歩</div>
                     </div>
                 `;
                 button.onclick = () => {
                     displayRoute(index);
                     // 選択されたボタンをハイライト
-                    document.querySelectorAll('#routeButtons button').forEach(btn => {
+                    document.querySelectorAll('#routeSwitchButtons button').forEach(btn => {
                         btn.classList.remove('border-green-500', 'bg-green-50');
                         btn.classList.add('border-gray-200');
                     });
@@ -339,17 +333,17 @@
                     button.classList.remove('border-gray-200');
                 };
 
-                routeButtonsContainer.appendChild(button);
+                routeSwitchContainer.appendChild(button);
             });
 
             // 最初のボタンをハイライト
-            const firstButton = routeButtonsContainer.querySelector('button');
+            const firstButton = routeSwitchContainer.querySelector('button');
             if (firstButton) {
                 firstButton.classList.add('border-green-500', 'bg-green-50');
                 firstButton.classList.remove('border-gray-200');
             }
 
-            document.getElementById('routeSelection').classList.remove('hidden');
+            document.getElementById('routeSwitch').classList.remove('hidden');
         }
 
         function generateWaypoints(center, targetDistanceKm, seed = 0) {
@@ -357,10 +351,10 @@
             // シードを使って異なるルートを生成
             const timeSeed = (Date.now() % 1000 + seed) / 1000;
             
-            const numWaypoints = 3;
+            const numWaypoints = 4; // 3 → 4に変更
             
-            // 係数を調整（歩数が多い問題を修正: 7.0 → 7.5）
-            const radiusKm = targetDistanceKm / 7.5;
+            // 係数を調整（7.5 → 7.2）
+            const radiusKm = targetDistanceKm / 7.2;
             
             const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
