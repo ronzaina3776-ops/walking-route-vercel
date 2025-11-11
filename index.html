@@ -260,25 +260,26 @@
         }
 
         function openInGoogleMaps() {
-            if (!currentRoute || !userLocation) {
-                alert('まずルートを作成してください');
-                return;
-            }
+    if (!currentRoute || !userLocation) {
+        alert('まずルートを作成してください');
+        return;
+    }
 
-            const waypoints = [];
-            currentRoute.legs.forEach((leg, index) => {
-                if (index < currentRoute.legs.length - 1) {
-                    const loc = leg.end_location;
-                    waypoints.push(`${loc.lat()},${loc.lng()}`);
-                }
-            });
-
-            const origin = `${userLocation.lat},${userLocation.lng}`;
-            const waypointsParam = waypoints.join('|');
-            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${origin}&waypoints=${waypointsParam}&travelmode=walking`;
-
-            window.open(url, '_blank');
+    const waypoints = [];
+    currentRoute.legs.forEach((leg, index) => {
+        if (index < currentRoute.legs.length - 1) {
+            const loc = leg.end_location;
+            // 括弧()を削除（プロパティアクセスに変更）
+            waypoints.push(`${loc.lat},${loc.lng}`);
         }
+    });
+
+    const origin = `${userLocation.lat},${userLocation.lng}`;
+    const waypointsParam = waypoints.join('|');
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${origin}&waypoints=${waypointsParam}&travelmode=walking`;
+
+    window.open(url, '_blank');
+}
     </script>
 </body>
 </html>
