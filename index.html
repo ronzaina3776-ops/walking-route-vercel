@@ -353,21 +353,26 @@
             const numWaypoints = 4;
             const radiusKm = targetDistanceKm / 7.45;
             
-            // 最小距離（km）：ウェイポイント間の最小距離を設定
-            const minDistanceBetweenWaypoints = radiusKm * 0.8;
+            // 最小距離をより大きく（0.8 → 1.0）
+            const minDistanceBetweenWaypoints = radiusKm * 1.0;
             
+            // 開始角度をランダムに設定
             const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
             let attempts = 0;
-            const maxAttempts = 50; // 最大試行回数
+            const maxAttempts = 50;
 
             while (waypoints.length < numWaypoints && attempts < maxAttempts) {
                 const i = waypoints.length;
                 const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-                // ランダム要素を少し減らす（0.3 → 0.25）
-                const randomOffset = (Math.random() - 0.5) * 0.25;
+                
+                // ランダム要素をさらに減らす（0.25 → 0.15）
+                // より均等な円周配置にする
+                const randomOffset = (Math.random() - 0.5) * 0.15;
                 const angle = startAngle + baseAngle + randomOffset;
-                const distance = radiusKm * (0.95 + Math.random() * 0.1);
+                
+                // 距離のばらつきも減らす（0.95-1.05 → 0.97-1.03）
+                const distance = radiusKm * (0.97 + Math.random() * 0.06);
 
                 const lat = center.lat + (distance / 111) * Math.cos(angle);
                 const lng = center.lng + (distance / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle);
@@ -410,9 +415,9 @@
 
             for (let i = 0; i < numWaypoints; i++) {
                 const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-                const randomOffset = (Math.random() - 0.5) * 0.25;
+                const randomOffset = (Math.random() - 0.5) * 0.15;
                 const angle = startAngle + baseAngle + randomOffset;
-                const distance = radiusKm * (0.95 + Math.random() * 0.1);
+                const distance = radiusKm * (0.97 + Math.random() * 0.06);
 
                 const lat = center.lat + (distance / 111) * Math.cos(angle);
                 const lng = center.lng + (distance / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle);
