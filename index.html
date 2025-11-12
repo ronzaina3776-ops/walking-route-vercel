@@ -178,14 +178,6 @@
                 </div>
             </div>
 
-            <!-- 経由地情報（Phase 2追加） -->
-            <div id="waypointsInfo" class="mt-4">
-                <h3 class="text-sm font-medium text-gray-600 mb-2">📍 経由地:</h3>
-                <div id="waypointsList" class="space-y-2">
-                    <!-- 経由地がここに表示される -->
-                </div>
-            </div>
-
             <button id="openInGoogleMaps" onclick="openInGoogleMaps()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-colors">
                 📱 Googleマップで開く
             </button>
@@ -916,56 +908,7 @@
             document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
             document.getElementById('routeTime').textContent = timeMinutes;
 
-            // Phase 2: 経由地の場所名を表示
-            displayWaypoints(currentRoute);
-
             document.getElementById('routeInfo').classList.remove('hidden');
-        }
-
-        // Phase 2: 経由地の情報を表示する関数
-        async function displayWaypoints(route) {
-            const waypointsList = document.getElementById('waypointsList');
-            waypointsList.innerHTML = '<div class="text-sm text-gray-500">経由地情報を取得中...</div>';
-
-            const waypoints = [];
-            
-            // 各レグの終点を経由地として取得（最後のレグは除く）
-            route.legs.forEach((leg, index) => {
-                if (index < route.legs.length - 1) {
-                    waypoints.push({
-                        lat: leg.end_location.lat,
-                        lng: leg.end_location.lng
-                    });
-                }
-            });
-
-            if (waypoints.length === 0) {
-                waypointsList.innerHTML = '<div class="text-sm text-gray-500">経由地なし（直線ルート）</div>';
-                return;
-            }
-
-            // 各経由地の場所名を取得
-            const placeNames = await Promise.all(
-                waypoints.map(wp => getPlaceName(wp.lat, wp.lng))
-            );
-
-            // 経由地情報を表示
-            waypointsList.innerHTML = '';
-            waypoints.forEach((wp, index) => {
-                const waypointDiv = document.createElement('div');
-                waypointDiv.className = 'bg-gray-50 p-3 rounded-lg';
-                waypointDiv.innerHTML = `
-                    <div class="flex items-start gap-2">
-                        <div class="text-lg">📍</div>
-                        <div class="flex-1">
-                            <div class="font-medium text-gray-800">経由地${index + 1}</div>
-                            <div class="text-sm text-gray-600 mt-1">${placeNames[index]}</div>
-                            <div class="text-xs text-gray-400 mt-1">${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}</div>
-                        </div>
-                    </div>
-                `;
-                waypointsList.appendChild(waypointDiv);
-            });
         }
 
         // ルート選択ボタンを表示する関数（地図の下に簡易版）
@@ -1093,25 +1036,6 @@
                       Math.sin(dLng / 2) * Math.sin(dLng / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
-        }
-
-        // 座標から場所名を取得する関数（Phase 2 - バックエンド経由版）
-        async function getPlaceName(lat, lng) {
-            try {
-                // バックエンドAPI経由でPlaces APIを呼び出す
-                const response = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
-                const data = await response.json();
-                
-                if (data.placeName && data.placeName !== '不明な場所') {
-                    return data.placeName;
-                }
-                
-                // 見つからない場合は道路名・地名を取得
-                return '📍 経由地';
-            } catch (error) {
-                console.error('場所名取得エラー:', error);
-                return '📍 経由地';
-            }
         }
 
         function openInGoogleMaps() {
