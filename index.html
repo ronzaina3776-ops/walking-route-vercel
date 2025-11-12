@@ -1095,74 +1095,23 @@
             return R * c;
         }
 
-        // 座標から場所名を取得する関数（Phase 2 - フロントエンド直接版）
+        // 座標から場所名を取得する関数（Phase 2 - バックエンド経由版）
         async function getPlaceName(lat, lng) {
-            return new Promise((resolve) => {
-                // Places Service を使用（Google Maps JSライブラリ）
-                const service = new google.maps.places.PlacesService(map);
+            try {
+                // バックエンドAPI経由でPlaces APIを呼び出す
+                const response = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
+                const data = await response.json();
                 
-                const request = {
-                    location: new google.maps.LatLng(lat, lng),
-                    radius: 50, // 50m以内
-                    rankBy: google.maps.places.RankBy.DISTANCE
-                };
+                if (data.placeName && data.placeName !== '不明な場所') {
+                    return data.placeName;
+                }
                 
-                service.nearbySearch(request, (results, status) => {
-                    if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
-                        const place = results[0];
-                        let emoji = '📍';
-                        
-                        // タイプに応じて絵文字を決定
-                        if (place.types) {
-                            if (place.types.includes('store') || place.types.includes('convenience_store')) {
-                                emoji = '🏪';
-                            } else if (place.types.includes('cafe') || place.types.includes('restaurant')) {
-                                emoji = '☕';
-                            } else if (place.types.includes('park')) {
-                                emoji = '🌳';
-                            } else if (place.types.includes('school') || place.types.includes('university')) {
-                                emoji = '🏫';
-                            } else if (place.types.includes('library')) {
-                                emoji = '📚';
-                            } else if (place.types.includes('hospital')) {
-                                emoji = '🏥';
-                            } else if (place.types.includes('bank')) {
-                                emoji = '🏦';
-                            } else if (place.types.includes('post_office')) {
-                                emoji = '📮';
-                            } else if (place.types.includes('gas_station')) {
-                                emoji = '⛽';
-                            } else if (place.types.includes('train_station') || place.types.includes('transit_station')) {
-                                emoji = '🚉';
-                            } else if (place.types.includes('place_of_worship')) {
-                                emoji = '⛩️';
-                            }
-                        }
-                        
-                        resolve(`${emoji} ${place.name}`);
-                    } else {
-                        // 施設が見つからない場合はGeocodingでフォールバック
-                        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                            if (status === 'OK' && results && results.length > 0) {
-                                // 簡潔な住所を取得
-                                const addressComponents = results[0].address_components;
-                                const route = addressComponents.find(c => c.types.includes('route'));
-                                const sublocality = addressComponents.find(c => c.types.includes('sublocality'));
-                                
-                                if (route) {
-                                    resolve(`📍 ${route.long_name}`);
-                                } else if (sublocality) {
-                                    resolve(`📍 ${sublocality.long_name}`);
-                                } else {
-                                    resolve('📍 不明な場所');
-                                }
-                            } else {
-                                resolve('📍 不明な場所');
-                            }
-                        });
-                    }
-                });
-            });
+                // 見つからない場合は道路名・地名を取得
+                return '📍 経由地';
+            } catch (error) {
+                console.error('場所名取得エラー:', error);
+                return '📍 経由地';
+            }
         }
 
         function openInGoogleMaps() {
