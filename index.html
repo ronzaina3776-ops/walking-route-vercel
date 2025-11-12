@@ -61,6 +61,26 @@
             </div>
         </div>
 
+        <!-- ミッション -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <h2 class="font-medium mb-3">今日のミッション</h2>
+            <button onclick="showRandomMission()" class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold hover:shadow-xl transition-all text-lg">
+                🎯 ミッションを見る
+            </button>
+            
+            <!-- ミッション表示エリア -->
+            <div id="missionDisplay" class="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl hidden">
+                <div class="text-center">
+                    <div id="missionEmoji" class="text-5xl mb-3">🪜</div>
+                    <div id="missionText" class="text-lg font-bold text-gray-800 mb-2">意味のない階段を見つけよう</div>
+                    <div id="missionHint" class="text-sm text-gray-600 mb-4">どこにも行かない純粋階段を探してみよう</div>
+                    <button onclick="showRandomMission()" class="px-4 py-2 bg-white rounded-lg text-purple-600 font-medium hover:bg-purple-50 transition-all">
+                        🔄 別のミッションを見る
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- 片道モード: 目的地選択 -->
         <div id="destinationSection" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <h2 class="font-medium mb-3">📍 目的地</h2>
@@ -210,6 +230,106 @@
         let destinationMarker = null;
         let isSelectingFromMap = false;
         let geocoder = null;
+
+        // ミッションデータ
+        const missions = [
+            // トマソン・建築の謎系
+            { emoji: '🪜', text: '意味のない階段を見つけよう', hint: 'どこにも行かない純粋階段を探してみよう' },
+            { emoji: '🚪', text: '開かない扉を見つけよう', hint: '壁の中のドア、2階の宙ぶらりんドアなど' },
+            { emoji: '🪟', text: '塞がれた窓を見つけよう', hint: 'レンガやコンクリートで塞がれた窓枠' },
+            { emoji: '🏗️', text: '工事現場を見つけよう', hint: '何ができる？半年後に来てみよう' },
+            { emoji: '🏚️', text: '廃墟っぽい建物を見つけよう', hint: '時が止まった場所' },
+            { emoji: '📦', text: 'ブルーシートを見つけよう', hint: '何が隠されている？' },
+            { emoji: '🧱', text: '中途半端な壁を見つけよう', hint: 'なぜここで終わる？' },
+            { emoji: '🪧', text: '使われていない看板を見つけよう', hint: '店はなくなったのに看板だけ' },
+            { emoji: '🚰', text: '不思議な配管を見つけよう', hint: 'なぜここに？どこへ続く？' },
+            
+            // 看板・文字系
+            { emoji: '✍️', text: '手書きの看板を見つけよう', hint: '店主の人柄が出る' },
+            { emoji: '🏮', text: '昭和の雰囲気の看板を見つけよう', hint: 'ホーロー看板、古い字体' },
+            { emoji: '😂', text: '誤字・脱字を見つけよう', hint: 'なぜ誰も直さない？' },
+            { emoji: '📢', text: '面白いキャッチコピーを見つけよう', hint: 'クスッと笑える宣伝文句' },
+            { emoji: '🔤', text: '消えかけの文字を見つけよう', hint: 'かろうじて読める看板や標識' },
+            { emoji: '⚠️', text: '意味不明な注意書きを見つけよう', hint: 'なぜこの注意が必要？' },
+            
+            // レトロ・時代系
+            { emoji: '🏠', text: 'レトロな建物を見つけよう', hint: '昭和の面影を残す建物' },
+            { emoji: '🎨', text: 'タイル張りの建物を見つけよう', hint: 'モザイクタイル、銭湯タイルなど' },
+            { emoji: '📞', text: '使われていない電話ボックスを見つけよう', hint: '今は誰も使わない' },
+            { emoji: '🏪', text: '昔ながらの商店を見つけよう', hint: 'シャッター商店街の生き残り' },
+            { emoji: '🏭', text: '煙突を見つけよう', hint: 'もう煙は出ていない？' },
+            { emoji: '🪟', text: '格子窓を見つけよう', hint: '昔の防犯対策' },
+            
+            // ディテール・装飾系
+            { emoji: '⭕', text: '面白いマンホールを見つけよう', hint: 'デザインマンホール、ご当地柄' },
+            { emoji: '🔲', text: '変わった形の窓を見つけよう', hint: '丸窓、三角窓、船窓など' },
+            { emoji: '🚪', text: '装飾されたドアを見つけよう', hint: '彫刻、ステンドグラスなど' },
+            { emoji: '🛤️', text: '美しい手すりを見つけよう', hint: '鉄細工、装飾的なデザイン' },
+            { emoji: '🌀', text: '渦巻き模様を見つけよう', hint: '看板、装飾、螺旋階段など' },
+            { emoji: '🐉', text: '動物の装飾を見つけよう', hint: '龍、獅子、鳥など' },
+            
+            // 謎・不思議系
+            { emoji: '❓', text: 'なぜここに？を見つけよう', hint: '場違いな物体や配置' },
+            { emoji: '🎭', text: '謎のオブジェを見つけよう', hint: '意味不明な彫刻や造形物' },
+            { emoji: '🪴', text: 'ビルの屋上の植物を見つけよう', hint: '誰が世話を？' },
+            { emoji: '🏺', text: '民家の庭の像を見つけよう', hint: 'たぬき、カエル、お地蔵さんなど' },
+            { emoji: '🔔', text: '鐘を見つけよう', hint: 'いつ鳴る？どんな音？' },
+            { emoji: '🪞', text: '鏡を見つけよう', hint: '見通しの悪い角の安全鏡' },
+            
+            // 植物・自然系
+            { emoji: '🌱', text: '隙間の植物を見つけよう', hint: 'アスファルトの割れ目から' },
+            { emoji: '🌳', text: 'ビルの間の木を見つけよう', hint: '都会の中の自然' },
+            { emoji: '🍃', text: 'コケを見つけよう', hint: '湿った場所の緑' },
+            { emoji: '🌸', text: '意外な場所の花を見つけよう', hint: '塀の上、屋根の上など' },
+            { emoji: '🌿', text: '名前を知らない植物を見つけて調べよう', hint: 'Google Lensを使うと簡単' },
+            { emoji: '🌺', text: 'この花は何？調べてみよう', hint: '季節の花を観察' },
+            { emoji: '🍂', text: '街路樹の名前を調べよう', hint: 'イチョウ？ケヤキ？プラタナス？' },
+            { emoji: '☘️', text: '雑草の名前を調べよう', hint: '実は可愛い名前だったり' },
+            { emoji: '🌲', text: '大きな木を見つけよう', hint: '樹齢何年？' },
+            
+            // 生き物系
+            { emoji: '🐦', text: '鳥の巣を見つけよう', hint: '看板の裏、軒下など' },
+            { emoji: '🐈', text: '看板猫/看板犬がいる店を探そう', hint: '店番してる動物' },
+            { emoji: '🦜', text: 'この鳥は何？調べてみよう', hint: '鳴き声、色、大きさに注目' },
+            { emoji: '🦋', text: '蝶の名前を調べよう', hint: 'アゲハ？モンシロチョウ？' },
+            
+            // 色・光系
+            { emoji: '🌈', text: '同じ色が3つ並んでいる場所を見つけよう', hint: '偶然の配色を楽しむ' },
+            { emoji: '☀️', text: '面白い影を見つけよう', hint: '建物の影、木漏れ日' },
+            { emoji: '💎', text: '窓に映る反射を見つけよう', hint: 'ビルに映るビル' },
+            { emoji: '🎨', text: '鮮やかな色の建物を見つけよう', hint: 'ピンク、青、黄色など' },
+            
+            // 動線・配置系
+            { emoji: '🔀', text: '三叉路を見つけよう', hint: 'Y字路、どっちに行く？' },
+            { emoji: '🛤️', text: '行き止まりを見つけよう', hint: '突然終わる道' },
+            { emoji: '🗻', text: '急な坂道を見つけよう', hint: 'これは登れない！' },
+            { emoji: '🌉', text: '高低差を感じよう', hint: '階段、スロープ、段差' },
+            
+            // 歴史・文化調べる系
+            { emoji: '🏛️', text: 'この建物の歴史を調べよう', hint: 'いつ建った？何に使われていた？' },
+            { emoji: '⛩️', text: 'この神社の由来を調べよう', hint: '祀られているのは誰？' },
+            { emoji: '🗿', text: '石碑の文字を読んでみよう', hint: '何が書いてある？' },
+            { emoji: '📍', text: '地名の由来を調べよう', hint: 'なぜこの地名？' },
+            { emoji: '🌉', text: 'この橋の名前の由来を調べよう', hint: 'なぜこの名前？' },
+            { emoji: '🚉', text: '駅名の由来を調べよう', hint: '地名？人名？' },
+            
+            // 想像・感覚系
+            { emoji: '🔨', text: '工事現場を見つけて完成を想像しよう', hint: '半年後にまた来てみよう' },
+            { emoji: '🏚️', text: 'この建物の過去を想像しよう', hint: '昔は何だった？誰がいた？' },
+            { emoji: '👂', text: '耳を澄まして音を聞こう', hint: '鳥、水、風、街の音' },
+            { emoji: '👃', text: '匂いに意識を向けよう', hint: '季節の匂い、店の匂い' }
+        ];
+
+        function showRandomMission() {
+            const randomIndex = Math.floor(Math.random() * missions.length);
+            const mission = missions[randomIndex];
+            
+            document.getElementById('missionEmoji').textContent = mission.emoji;
+            document.getElementById('missionText').textContent = mission.text;
+            document.getElementById('missionHint').textContent = mission.hint || '';
+            
+            document.getElementById('missionDisplay').classList.remove('hidden');
+        }
 
         function getLocation() {
             if (navigator.geolocation) {
