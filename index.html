@@ -178,6 +178,14 @@
                 </div>
             </div>
 
+            <!-- 経由地情報（Phase 2追加） -->
+            <div id="waypointsInfo" class="mt-4">
+                <h3 class="text-sm font-medium text-gray-600 mb-2">📍 経由地:</h3>
+                <div id="waypointsList" class="space-y-2">
+                    <!-- 経由地がここに表示される -->
+                </div>
+            </div>
+
             <button id="openInGoogleMaps" onclick="openInGoogleMaps()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-colors">
                 📱 Googleマップで開く
             </button>
@@ -282,7 +290,7 @@
             { emoji: '🍃', text: 'コケを見つけよう', hint: '湿った場所の緑' },
             { emoji: '🌸', text: '意外な場所の花を見つけよう', hint: '塀の上、屋根の上など' },
             { emoji: '🌿', text: '名前を知らない植物を見つけて調べよう', hint: 'Google Lensを使うと簡単' },
-            { emoji: '🌺', text: 'この花は何？調べてみよう', hint: '季節の花を観察' },
+            { emoji: '🌺', text: '見かけた花の名前を調べよう', hint: '季節の花を観察' },
             { emoji: '🍂', text: '街路樹の名前を調べよう', hint: 'イチョウ？ケヤキ？プラタナス？' },
             { emoji: '☘️', text: '雑草の名前を調べよう', hint: '実は可愛い名前だったり' },
             { emoji: '🌲', text: '大きな木を見つけよう', hint: '樹齢何年？' },
@@ -290,7 +298,7 @@
             // 生き物系
             { emoji: '🐦', text: '鳥の巣を見つけよう', hint: '看板の裏、軒下など' },
             { emoji: '🐈', text: '看板猫/看板犬がいる店を探そう', hint: '店番してる動物' },
-            { emoji: '🦜', text: 'この鳥は何？調べてみよう', hint: '鳴き声、色、大きさに注目' },
+            { emoji: '🦜', text: '見かけた鳥の名前を調べよう', hint: '鳴き声、色、大きさに注目' },
             { emoji: '🦋', text: '蝶の名前を調べよう', hint: 'アゲハ？モンシロチョウ？' },
             
             // 色・光系
@@ -306,16 +314,16 @@
             { emoji: '🌉', text: '高低差を感じよう', hint: '階段、スロープ、段差' },
             
             // 歴史・文化調べる系
-            { emoji: '🏛️', text: 'この建物の歴史を調べよう', hint: 'いつ建った？何に使われていた？' },
-            { emoji: '⛩️', text: 'この神社の由来を調べよう', hint: '祀られているのは誰？' },
+            { emoji: '🏛️', text: '気になる建物の歴史を調べよう', hint: 'いつ建った？何に使われていた？' },
+            { emoji: '⛩️', text: '見かけた神社の由来を調べよう', hint: '祀られているのは誰？' },
             { emoji: '🗿', text: '石碑の文字を読んでみよう', hint: '何が書いてある？' },
             { emoji: '📍', text: '地名の由来を調べよう', hint: 'なぜこの地名？' },
-            { emoji: '🌉', text: 'この橋の名前の由来を調べよう', hint: 'なぜこの名前？' },
+            { emoji: '🌉', text: '見かけた橋の名前の由来を調べよう', hint: 'なぜこの名前？' },
             { emoji: '🚉', text: '駅名の由来を調べよう', hint: '地名？人名？' },
             
             // 想像・感覚系
             { emoji: '🔨', text: '工事現場を見つけて完成を想像しよう', hint: '半年後にまた来てみよう' },
-            { emoji: '🏚️', text: 'この建物の過去を想像しよう', hint: '昔は何だった？誰がいた？' },
+            { emoji: '🏚️', text: '気になる建物の過去を想像しよう', hint: '昔は何だった？誰がいた？' },
             { emoji: '👂', text: '耳を澄まして音を聞こう', hint: '鳥、水、風、街の音' },
             { emoji: '👃', text: '匂いに意識を向けよう', hint: '季節の匂い、店の匂い' }
         ];
@@ -908,7 +916,56 @@
             document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
             document.getElementById('routeTime').textContent = timeMinutes;
 
+            // Phase 2: 経由地の場所名を表示
+            displayWaypoints(currentRoute);
+
             document.getElementById('routeInfo').classList.remove('hidden');
+        }
+
+        // Phase 2: 経由地の情報を表示する関数
+        async function displayWaypoints(route) {
+            const waypointsList = document.getElementById('waypointsList');
+            waypointsList.innerHTML = '<div class="text-sm text-gray-500">経由地情報を取得中...</div>';
+
+            const waypoints = [];
+            
+            // 各レグの終点を経由地として取得（最後のレグは除く）
+            route.legs.forEach((leg, index) => {
+                if (index < route.legs.length - 1) {
+                    waypoints.push({
+                        lat: leg.end_location.lat,
+                        lng: leg.end_location.lng
+                    });
+                }
+            });
+
+            if (waypoints.length === 0) {
+                waypointsList.innerHTML = '<div class="text-sm text-gray-500">経由地なし（直線ルート）</div>';
+                return;
+            }
+
+            // 各経由地の場所名を取得
+            const placeNames = await Promise.all(
+                waypoints.map(wp => getPlaceName(wp.lat, wp.lng))
+            );
+
+            // 経由地情報を表示
+            waypointsList.innerHTML = '';
+            waypoints.forEach((wp, index) => {
+                const waypointDiv = document.createElement('div');
+                waypointDiv.className = 'bg-gray-50 p-3 rounded-lg';
+                waypointDiv.innerHTML = `
+                    <div class="flex items-start gap-2">
+                        <div class="text-lg">📍</div>
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-800">経由地${index + 1}</div>
+                            <div class="text-sm text-gray-600 mt-1">${placeNames[index]}</div>
+                            <div class="text-xs text-gray-400 mt-1">${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}</div>
+                        </div>
+                    </div>
+                `;
+                waypointsList.appendChild(waypointDiv);
+            });
         }
 
         // ルート選択ボタンを表示する関数（地図の下に簡易版）
@@ -1036,6 +1093,27 @@
                       Math.sin(dLng / 2) * Math.sin(dLng / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
+        }
+
+        // 座標から場所名を取得する関数（Phase 2追加 - Places API版）
+        async function getPlaceName(lat, lng) {
+            try {
+                // まずPlaces APIで近くの施設を検索
+                const response = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
+                const data = await response.json();
+                
+                if (data.placeName && data.placeName !== '不明な場所') {
+                    return data.placeName;
+                }
+                
+                // 施設が見つからない場合はGeocoding APIで住所を取得
+                const geocodeResponse = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`);
+                const geocodeData = await geocodeResponse.json();
+                return geocodeData.placeName || '不明な場所';
+            } catch (error) {
+                console.error('場所名取得エラー:', error);
+                return '不明な場所';
+            }
         }
 
         function openInGoogleMaps() {
