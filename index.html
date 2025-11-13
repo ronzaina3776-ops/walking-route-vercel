@@ -821,8 +821,8 @@
             // 現在地→目的地の直線距離
             const directDistance = calculateDistance(origin, destination);
             
-            // 寄り道の半径（係数を大幅に小さく: 4.0 → 2.5）
-            const radiusKm = detourDistanceKm / 2.5;
+            // 寄り道の半径（周回モードと同じくらいに調整: 2.5 → 7.0）
+            const radiusKm = detourDistanceKm / 7.0;
             console.log(`寄り道半径: ${radiusKm.toFixed(2)}km`);
             
             // 進行方向の角度を計算
@@ -845,11 +845,9 @@
                 const baseLat = origin.lat + (destination.lat - origin.lat) * progress;
                 const baseLng = origin.lng + (destination.lng - origin.lng) * progress;
                 
-                // 垂直方向への寄り道距離（中央が最大）
-                // 山なりの形にするが、より大きく寄り道
+                // 垂直方向への寄り道距離（中央が最大、山なりの形）
                 const detourFactor = Math.sin(Math.PI * (i + 1) / (numWaypoints + 1));
-                // 係数を1.2倍にしてさらに大きく寄り道
-                const perpDistance = radiusKm * detourFactor * side * 1.2;
+                const perpDistance = radiusKm * detourFactor * side;
                 
                 console.log(`経由地${i + 1}: progress=${progress.toFixed(2)}, detourFactor=${detourFactor.toFixed(2)}, perpDistance=${perpDistance.toFixed(2)}km`);
                 
