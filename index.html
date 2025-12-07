@@ -220,28 +220,29 @@
             
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">名前</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">名前（保存する場合のみ必要）</label>
                     <input type="text" id="destName" placeholder="例: 自宅、職場、カフェ" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">住所</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">住所（施設名でもOK）</label>
                     <input type="text" id="destAddress" placeholder="例: 大阪城公園、梅田駅、道頓堀" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
-                    <p class="mt-2 text-xs text-gray-500">💡 施設名、住所、駅名などを入力すると候補が表示されます</p>
-                </div>
-                
-                <div class="text-sm text-gray-500">
-                    または地図から選択してください
+                    <p class="mt-2 text-xs text-gray-500">💡 入力すると候補が表示されます。候補を選んでから下のボタンを押してください</p>
                 </div>
             </div>
             
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeAddDestination()" class="flex-1 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
-                    キャンセル
+            <div class="space-y-3 mt-6">
+                <button onclick="useDestinationNow()" class="w-full py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all font-bold">
+                    🚀 登録せずにすぐ使う
                 </button>
-                <button onclick="saveDestination()" class="flex-1 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
-                    保存
-                </button>
+                <div class="flex gap-3">
+                    <button onclick="closeAddDestination()" class="flex-1 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+                        キャンセル
+                    </button>
+                    <button onclick="saveDestination()" class="flex-1 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
+                        💾 保存して使う
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -546,8 +547,8 @@
                 return;
             }
             
-            // Autocompleteで選択された場所があればそれを使う
-            if (autocompletePlace && autocompletePlace.address === addressInput) {
+            // Autocompleteで選択された場所があればそれを使う（文字列一致チェック緩和）
+            if (autocompletePlace) {
                 const dest = {
                     name: name,
                     address: autocompletePlace.address,
@@ -558,6 +559,9 @@
                 const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
                 destinations.push(dest);
                 localStorage.setItem('savedDestinations', JSON.stringify(destinations));
+                
+                // 保存したものをそのまま選択
+                selectDestination(dest);
                 
                 autocompletePlace = null; // リセット
                 closeAddDestination();
@@ -589,8 +593,62 @@
                 destinations.push(dest);
                 localStorage.setItem('savedDestinations', JSON.stringify(destinations));
                 
+                // 保存したものをそのまま選択
+                selectDestination(dest);
+                
                 closeAddDestination();
                 loadSavedDestinations();
+            } catch (error) {
+                alert('住所が見つかりませんでした。候補から選択するか、正しい住所を入力してください。');
+            }
+        }
+
+        // 登録せずにすぐ使う
+        async function useDestinationNow() {
+            const addressInput = document.getElementById('destAddress').value.trim();
+            
+            if (!addressInput) {
+                alert('住所を入力してください');
+                return;
+            }
+            
+            // Autocompleteで選択された場所があればそれを使う
+            if (autocompletePlace) {
+                const dest = {
+                    name: autocompletePlace.name,
+                    address: autocompletePlace.address,
+                    lat: autocompletePlace.location.lat,
+                    lng: autocompletePlace.location.lng
+                };
+                
+                selectDestination(dest);
+                autocompletePlace = null; // リセット
+                closeAddDestination();
+                return;
+            }
+            
+            // Autocompleteで選択されていない場合はGeocoding
+            try {
+                const results = await new Promise((resolve, reject) => {
+                    geocoder.geocode({ address: addressInput }, (results, status) => {
+                        if (status === 'OK') {
+                            resolve(results);
+                        } else {
+                            reject(status);
+                        }
+                    });
+                });
+                
+                const location = results[0].geometry.location;
+                const dest = {
+                    name: results[0].formatted_address,
+                    address: results[0].formatted_address,
+                    lat: location.lat(),
+                    lng: location.lng()
+                };
+                
+                selectDestination(dest);
+                closeAddDestination();
             } catch (error) {
                 alert('住所が見つかりませんでした。候補から選択するか、正しい住所を入力してください。');
             }
