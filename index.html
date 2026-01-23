@@ -917,11 +917,12 @@
                 const avoidHighways = document.getElementById('avoidHighways').checked;
 
                 if (currentMode === 'loop') {
-                    // 周回モード
+                    // 周回モード - 複数候補を生成して一筆書きのものを選択
                     allRoutes = [];
                     const routePromises = [];
+                    const candidateCount = 6; // 多めに候補を生成
 
-                    for (let i = 0; i < 3; i++) {
+                    for (let i = 0; i < candidateCount; i++) {
                         const waypoints = generateWaypoints(userLocation, targetDistance, i * 1000);
                         
                         const promise = fetch('/api/directions', {
@@ -933,7 +934,8 @@
                                 origin: userLocation,
                                 destination: userLocation,
                                 waypoints: waypoints,
-                                avoidHighways: avoidHighways
+                                avoidHighways: avoidHighways,
+                                optimizeWaypoints: false // 一筆書きのため順序を固定
                             })
                         })
                         .then(response => response.json())
@@ -948,9 +950,23 @@
                     }
 
                     const routes = await Promise.all(routePromises);
-                    allRoutes = routes.filter(route => route !== null);
+                    const validRoutes = routes.filter(route => route !== null);
 
-                    console.log(`${allRoutes.length}個のルートが生成されました`);
+                    console.log(`${validRoutes.length}個のルートが生成されました`);
+
+                    // 重複度をチェックして、一筆書きに近いルートを選択
+                    const scoredRoutes = validRoutes.map(route => {
+                        const score = calculateRouteOverlapScore(route);
+                        return { route, score };
+                    });
+
+                    // スコアが低い（重複が少ない）順にソート
+                    scoredRoutes.sort((a, b) => a.score - b.score);
+
+                    // 上位3つを選択
+                    allRoutes = scoredRoutes.slice(0, 3).map(sr => sr.route);
+
+                    console.log('重複スコア:', scoredRoutes.slice(0, 3).map(sr => sr.score));
 
                     if (allRoutes.length > 0) {
                         displayRoute(0);
@@ -989,7 +1005,8 @@
                             origin: userLocation,
                             destination: selectedDestination,
                             waypoints: waypoints,
-                            avoidHighways: avoidHighways
+                            avoidHighways: avoidHighways,
+                            optimizeWaypoints: false // 順序を固定
                         })
                     });
 
@@ -1019,6 +1036,40 @@
                 button.disabled = false;
                 button.textContent = currentMode === 'loop' ? '🗺️ ルートを作成（3パターン生成）' : '🗺️ ルートを作成';
             }
+        }
+
+        // ルートの重複度を計算（低いほど一筆書きに近い）
+        function calculateRouteOverlapScore(route) {
+            const path = google.maps.geometry.encoding.decodePath(route.overview_polyline.points);
+            
+            // 各セグメントをハッシュ化して重複をカウント
+            const segmentSet = new Map();
+            let overlapCount = 0;
+            
+            for (let i = 0; i < path.length - 1; i++) {
+                const p1 = path[i];
+                const p2 = path[i + 1];
+                
+                // セグメントを正規化（方向に関係なく同じキーになるように）
+                const key1 = `${p1.lat().toFixed(5)},${p1.lng().toFixed(5)}`;
+                const key2 = `${p2.lat().toFixed(5)},${p2.lng().toFixed(5)}`;
+                const segmentKey = key1 < key2 ? `${key1}-${key2}` : `${key2}-${key1}`;
+                
+                if (segmentSet.has(segmentKey)) {
+                    overlapCount++;
+                    segmentSet.set(segmentKey, segmentSet.get(segmentKey) + 1);
+                } else {
+                    segmentSet.set(segmentKey, 1);
+                }
+            }
+            
+            // 重複率を計算
+            const totalSegments = path.length - 1;
+            const overlapScore = totalSegments > 0 ? overlapCount / totalSegments : 0;
+            
+            console.log(`重複セグメント: ${overlapCount}/${totalSegments} (${(overlapScore * 100).toFixed(1)}%)`);
+            
+            return overlapScore;
         }
 
         // 寄り道ウェイポイントを生成（片道モード用）
@@ -1190,13 +1241,16 @@
             
             const minDistanceBetweenWaypoints = radiusKm * 1.0;
             
+            // 開始角度をランダムに決定
             const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
             let attempts = 0;
             const maxAttempts = 50;
 
+            // 時計回りに順序付けられたウェイポイントを生成
             while (waypoints.length < numWaypoints && attempts < maxAttempts) {
                 const i = waypoints.length;
+                // 時計回りに均等に配置
                 const baseAngle = (Math.PI * 2 / numWaypoints) * i;
                 const randomOffset = (Math.random() - 0.5) * 0.15;
                 const angle = startAngle + baseAngle + randomOffset;
