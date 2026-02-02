@@ -60,6 +60,28 @@
             height: 70vh;
             min-height: 400px;
         }
+
+        /* スタンプラリー用スタイル */
+        .stamp-card {
+            transition: all 0.2s;
+        }
+        .stamp-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .stamp-visited {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-color: #10b981;
+        }
+        .stamp-unvisited {
+            background: white;
+            border-color: #e5e7eb;
+        }
+        .category-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
@@ -94,122 +116,176 @@
             </div>
         </div>
 
-        <!-- モード選択 -->
+        <!-- モード選択（3モード） -->
         <div id="modeSection" class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="font-medium mb-3">モード選択</h2>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-3">
                 <button onclick="setMode('loop')" id="loopModeBtn" class="p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all">
                     <div class="text-2xl mb-2">🔄</div>
-                    <div class="font-bold">周回モード</div>
-                    <div class="text-xs text-gray-600 mt-1">スタート地点に戻る</div>
+                    <div class="font-bold text-sm">周回</div>
+                    <div class="text-xs text-gray-600 mt-1">戻ってくる</div>
                 </button>
                 <button onclick="setMode('oneway')" id="onewayModeBtn" class="p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all">
                     <div class="text-2xl mb-2">➡️</div>
-                    <div class="font-bold">片道モード</div>
-                    <div class="text-xs text-gray-600 mt-1">目的地まで寄り道</div>
+                    <div class="font-bold text-sm">片道</div>
+                    <div class="text-xs text-gray-600 mt-1">目的地まで</div>
+                </button>
+                <button onclick="setMode('stamp')" id="stampModeBtn" class="p-4 rounded-xl border-2 border-gray-200 hover:border-purple-500 transition-all">
+                    <div class="text-2xl mb-2">📍</div>
+                    <div class="font-bold text-sm">スタンプ</div>
+                    <div class="text-xs text-gray-600 mt-1">ラリー巡り</div>
                 </button>
             </div>
         </div>
 
-        <!-- ミッション -->
-        <div id="missionSection" class="bg-white rounded-2xl shadow-lg p-6">
-            <h2 class="font-medium mb-3">今日のミッション</h2>
-            <button onclick="showRandomMission()" class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold hover:shadow-xl transition-all text-lg">
-                🎯 ミッションを見る
+        <!-- ========== ルート作成セクション（周回・片道モード用） ========== -->
+        <div id="routeCreationSection">
+            <!-- ミッション -->
+            <div id="missionSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="font-medium mb-3">今日のミッション</h2>
+                <button onclick="showRandomMission()" class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold hover:shadow-xl transition-all text-lg">
+                    🎯 ミッションを見る
+                </button>
+                
+                <div id="missionDisplay" class="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl hidden">
+                    <div class="text-center">
+                        <div id="missionEmoji" class="text-5xl mb-3">🪜</div>
+                        <div id="missionText" class="text-lg font-bold text-gray-800 mb-2">意味のない階段を見つけよう</div>
+                        <div id="missionHint" class="text-sm text-gray-600 mb-4">どこにも行かない純粋階段を探してみよう</div>
+                        <button onclick="showRandomMission()" class="px-4 py-2 bg-white rounded-lg text-purple-600 font-medium hover:bg-purple-50 transition-all">
+                            🔄 別のミッションを見る
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 片道モード: 目的地選択 -->
+            <div id="destinationSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
+                <h2 class="font-medium mb-3">📍 目的地</h2>
+                
+                <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mb-4 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">
+                    🗺️ 地図から選択（おすすめ）
+                </button>
+                
+                <div class="mb-3">
+                    <div class="text-sm font-medium text-gray-600 mb-2">登録済みの目的地:</div>
+                    <div id="savedDestinations" class="space-y-2"></div>
+                </div>
+                
+                <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all text-sm">
+                    ＋ または住所で追加
+                </button>
+                
+                <div id="selectedDestinationDisplay" class="mt-4 p-3 bg-blue-50 rounded-lg hidden">
+                    <div class="text-sm text-gray-600">選択中の目的地:</div>
+                    <div id="selectedDestinationName" class="font-bold text-lg"></div>
+                    <div id="selectedDestinationDistance" class="text-sm text-gray-600 mt-1"></div>
+                </div>
+            </div>
+
+            <!-- 歩数設定 -->
+            <div id="stepsSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="font-medium mb-3">目標歩数</h2>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="stepsRange" min="1000" max="20000" step="500" value="5000" 
+                        class="flex-1 h-2 bg-gray-200 rounded-lg cursor-pointer accent-green-500"
+                        oninput="updateSteps(this.value)">
+                    <div class="text-right min-w-32">
+                        <div id="stepsDisplay" class="text-3xl font-bold text-green-600">5,000</div>
+                        <div id="distanceDisplay" class="text-sm text-gray-500">歩 (3.5km)</div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 mt-4">
+                    <button onclick="setSteps(3000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">3千歩</button>
+                    <button onclick="setSteps(5000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">5千歩</button>
+                    <button onclick="setSteps(10000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">1万歩</button>
+                </div>
+            </div>
+
+            <!-- ルート設定 -->
+            <div id="routeSettingsSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="font-medium mb-3">ルート設定</h2>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="avoidHighways" checked class="w-5 h-5 accent-green-500">
+                    <span class="text-gray-700">大通り・幹線道路を避ける</span>
+                </label>
+            </div>
+
+            <!-- ルート作成ボタン -->
+            <button onclick="createRoute()" id="createRouteBtn" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-4 rounded-xl hover:shadow-xl transition-all mb-6">
+                🗺️ ルートを作成（3パターン生成）
             </button>
-            
-            <!-- ミッション表示エリア -->
-            <div id="missionDisplay" class="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl hidden">
-                <div class="text-center">
-                    <div id="missionEmoji" class="text-5xl mb-3">🪜</div>
-                    <div id="missionText" class="text-lg font-bold text-gray-800 mb-2">意味のない階段を見つけよう</div>
-                    <div id="missionHint" class="text-sm text-gray-600 mb-4">どこにも行かない純粋階段を探してみよう</div>
-                    <button onclick="showRandomMission()" class="px-4 py-2 bg-white rounded-lg text-purple-600 font-medium hover:bg-purple-50 transition-all">
-                        🔄 別のミッションを見る
+        </div>
+
+        <!-- ========== スタンプラリーセクション ========== -->
+        <div id="stampRallySection" class="hidden">
+            <!-- カテゴリ選択 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="font-medium mb-3">カテゴリ</h2>
+                <div class="flex flex-wrap gap-2" id="categoryButtons">
+                    <button onclick="filterByCategory('all')" class="category-btn active px-4 py-2 rounded-full border-2 transition-all text-sm font-medium">
+                        🎯 すべて
+                    </button>
+                    <button onclick="filterByCategory('temples')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">
+                        ⛩️ 神社仏閣
+                    </button>
+                    <button onclick="filterByCategory('public')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">
+                        🏛️ 公共施設
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- 片道モード: 目的地選択 -->
-        <div id="destinationSection" class="bg-white rounded-2xl shadow-lg p-6 hidden">
-            <h2 class="font-medium mb-3">📍 目的地</h2>
-            
-            <!-- 地図から選択（一番上に） -->
-            <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mb-4 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">
-                🗺️ 地図から選択（おすすめ）
-            </button>
-            
-            <!-- 登録済み目的地 -->
-            <div class="mb-3">
-                <div class="text-sm font-medium text-gray-600 mb-2">登録済みの目的地:</div>
-                <div id="savedDestinations" class="space-y-2">
-                    <!-- 登録地がここに表示される -->
+            <!-- スタンプラリー一覧 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="font-medium mb-3">スタンプラリー</h2>
+                <div id="rallyList" class="space-y-3">
+                    <!-- 動的に生成 -->
                 </div>
             </div>
-            
-            <!-- 新しい目的地を追加 -->
-            <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all text-sm">
-                ＋ または住所で追加
-            </button>
-            
-            <!-- 選択中の目的地 -->
-            <div id="selectedDestinationDisplay" class="mt-4 p-3 bg-blue-50 rounded-lg hidden">
-                <div class="text-sm text-gray-600">選択中の目的地:</div>
-                <div id="selectedDestinationName" class="font-bold text-lg"></div>
-                <div id="selectedDestinationDistance" class="text-sm text-gray-600 mt-1"></div>
-            </div>
-        </div>
 
-        <!-- 歩数設定 -->
-        <div id="stepsSection" class="bg-white rounded-2xl shadow-lg p-6">
-            <h2 class="font-medium mb-3">目標歩数</h2>
-            <div class="flex items-center gap-4">
-                <input type="range" id="stepsRange" min="1000" max="20000" step="500" value="5000" 
-                    class="flex-1 h-2 bg-gray-200 rounded-lg cursor-pointer accent-green-500"
-                    oninput="updateSteps(this.value)">
-                <div class="text-right min-w-32">
-                    <div id="stepsDisplay" class="text-3xl font-bold text-green-600">5,000</div>
-                    <div id="distanceDisplay" class="text-sm text-gray-500">歩 (3.5km)</div>
+            <!-- スタンプラリー詳細（スポット一覧） -->
+            <div id="rallyDetailSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <button onclick="closeRallyDetail()" class="text-gray-500 hover:text-gray-700">
+                        ← 戻る
+                    </button>
+                    <div id="rallyProgress" class="text-sm font-medium text-green-600"></div>
                 </div>
-            </div>
-            
-            <div class="flex gap-2 mt-4">
-                <button onclick="setSteps(3000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">3千歩</button>
-                <button onclick="setSteps(5000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">5千歩</button>
-                <button onclick="setSteps(10000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">1万歩</button>
+                <h2 id="rallyDetailTitle" class="text-xl font-bold mb-2"></h2>
+                <p id="rallyDetailDesc" class="text-sm text-gray-600 mb-4"></p>
+                
+                <!-- 並び替え -->
+                <div class="flex gap-2 mb-4">
+                    <button onclick="sortSpots('default')" class="sort-btn active px-3 py-1 text-sm rounded-lg bg-gray-100">番号順</button>
+                    <button onclick="sortSpots('distance')" class="sort-btn px-3 py-1 text-sm rounded-lg bg-gray-100">距離順</button>
+                    <button onclick="sortSpots('unvisited')" class="sort-btn px-3 py-1 text-sm rounded-lg bg-gray-100">未訪問優先</button>
+                </div>
+                
+                <div id="spotList" class="space-y-3">
+                    <!-- 動的に生成 -->
+                </div>
+                
+                <!-- 近くの未訪問スポットへルート作成 -->
+                <button onclick="createRouteToNearestSpot()" class="w-full mt-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-xl transition-all">
+                    🚶 近くの未訪問スポットへルート作成
+                </button>
             </div>
         </div>
-
-        <!-- ルート設定 -->
-        <div id="routeSettingsSection" class="bg-white rounded-2xl shadow-lg p-6">
-            <h2 class="font-medium mb-3">ルート設定</h2>
-            <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="avoidHighways" checked class="w-5 h-5 accent-green-500">
-                <span class="text-gray-700">大通り・幹線道路を避ける</span>
-            </label>
-        </div>
-
-        <!-- ルート作成ボタン -->
-        <button onclick="createRoute()" id="createRouteBtn" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-4 rounded-xl hover:shadow-xl transition-all">
-            🗺️ ルートを作成（3パターン生成）
-        </button>
 
         <!-- 地図 -->
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="text-lg font-bold mb-4">📍 地図</h2>
             <div id="map" class="rounded-xl border-2 border-gray-200"></div>
             
-            <!-- ルート切り替えボタン（地図のすぐ下） -->
+            <!-- ルート切り替えボタン -->
             <div id="routeSwitch" class="mt-4 hidden">
                 <div class="text-sm font-medium text-gray-600 mb-2">ルートを選択:</div>
-                <div id="routeSwitchButtons" class="flex gap-2">
-                    <!-- ルート切り替えボタンがここに追加される -->
-                </div>
+                <div id="routeSwitchButtons" class="flex gap-2"></div>
             </div>
         </div>
 
-        <!-- ルート情報（詳細） -->
+        <!-- ルート情報 -->
         <div id="routeInfo" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <h2 class="text-lg font-bold mb-4">📊 ルート情報</h2>
             
@@ -228,7 +304,6 @@
                 </div>
             </div>
 
-            <!-- ナビ開始ボタン（新規追加） -->
             <button id="startNavBtn" onclick="startNavigation()" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-xl hover:shadow-xl transition-all mb-3">
                 🧭 このアプリでナビ開始
             </button>
@@ -238,7 +313,7 @@
             </button>
         </div>
 
-        <!-- ナビモード表示（ナビ中に表示） -->
+        <!-- ナビモード表示 -->
         <div id="navModePanel" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold">🧭 ナビゲーション中</h2>
@@ -247,7 +322,6 @@
                 </div>
             </div>
             
-            <!-- ナビ情報 -->
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div class="bg-blue-50 p-4 rounded-xl text-center">
                     <div id="navWalkedDistance" class="text-2xl font-bold text-blue-600">0</div>
@@ -259,7 +333,6 @@
                 </div>
             </div>
 
-            <!-- 追従モード切り替え -->
             <div class="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-xl">
                 <span class="font-medium">地図の自動追従</span>
                 <label class="relative inline-flex items-center cursor-pointer">
@@ -268,7 +341,6 @@
                 </label>
             </div>
             
-            <!-- ナビ終了ボタン -->
             <button onclick="stopNavigation()" class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors">
                 ⏹️ ナビを終了
             </button>
@@ -290,7 +362,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">住所（施設名でもOK）</label>
                     <input type="text" id="destAddress" placeholder="例: 大阪城公園、梅田駅、道頓堀" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
-                    <p class="mt-2 text-xs text-gray-500">💡 入力すると候補が表示されます。候補を選んでから下のボタンを押してください</p>
+                    <p class="mt-2 text-xs text-gray-500">💡 入力すると候補が表示されます</p>
                 </div>
             </div>
             
@@ -310,23 +382,35 @@
         </div>
     </div>
 
+    <!-- チェックインモーダル -->
+    <div id="checkinModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div id="checkinContent" class="text-center">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+    </div>
+
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry,places"></script>
     <script>
+        // ========================================
+        // グローバル変数
+        // ========================================
         let map = null;
         let userLocation = null;
         let currentSteps = 5000;
         let currentRoute = null;
         let currentPolyline = null;
         let allRoutes = [];
-        let currentMode = 'loop'; // 'loop' or 'oneway'
+        let currentMode = 'loop'; // 'loop', 'oneway', 'stamp'
         let selectedDestination = null;
         let destinationMarker = null;
         let isSelectingFromMap = false;
         let geocoder = null;
         let autocomplete = null;
-        let autocompletePlace = null; // Autocompleteで選択された場所
+        let autocompletePlace = null;
 
-        // ナビモード用の変数
+        // ナビモード用
         let isNavigating = false;
         let watchId = null;
         let currentPositionMarker = null;
@@ -335,106 +419,163 @@
         let startPosition = null;
         let totalRouteDistance = 0;
 
+        // スタンプラリー用
+        let currentRallyKey = null;
+        let currentSortMode = 'default';
+        let stampMarkers = [];
+
+        // ========================================
+        // スタンプラリーデータ
+        // ========================================
+        const stampRallies = {
+            // 神社仏閣系
+            shichifukujin: {
+                name: "大阪七福神巡り",
+                icon: "⛩️",
+                category: "temples",
+                description: "江戸時代から続く福を招く七福神巡り",
+                spots: [
+                    { id: 1, name: "三光神社", detail: "寿老神", address: "天王寺区玉造本町14-90", lat: 34.67361, lng: 135.52833, blessing: "長寿・幸福" },
+                    { id: 2, name: "長久寺", detail: "福禄寿", address: "中央区谷町8-2-49", lat: 34.67028, lng: 135.51611, blessing: "幸福・財産・長寿" },
+                    { id: 3, name: "法案寺", detail: "弁財天", address: "中央区島之内2-10-14", lat: 34.66750, lng: 135.50667, blessing: "芸能・財運" },
+                    { id: 4, name: "大乗坊", detail: "毘沙門天", address: "浪速区日本橋3-6-13", lat: 34.65833, lng: 135.50583, blessing: "勝運・厄除け" },
+                    { id: 5, name: "大国主神社", detail: "大黒天", address: "浪速区敷津西1-2-12", lat: 34.65444, lng: 135.49944, blessing: "金運・商売繁盛" },
+                    { id: 6, name: "今宮戎神社", detail: "恵比寿", address: "浪速区恵美須西1-6-10", lat: 34.65222, lng: 135.50556, blessing: "商売繁盛" },
+                    { id: 7, name: "四天王寺 布袋堂", detail: "布袋尊", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "笑門来福" }
+                ]
+            },
+            naniwashichiko: {
+                name: "なにわ七幸めぐり",
+                icon: "🙏",
+                category: "temples",
+                description: "大阪を代表する7社寺で七つの幸せを",
+                spots: [
+                    { id: 1, name: "大阪天満宮", detail: "学業成就", address: "北区天神橋2-1-8", lat: 34.69472, lng: 135.51361, blessing: "学問・受験合格" },
+                    { id: 2, name: "住吉大社", detail: "厄除祈願", address: "住吉区住吉2-9-89", lat: 34.61278, lng: 135.49278, blessing: "厄除け・開運" },
+                    { id: 3, name: "四條畷神社", detail: "心願成就", address: "四条畷市南野2-18-1", lat: 34.73889, lng: 135.63889, blessing: "願い事成就" },
+                    { id: 4, name: "大念佛寺", detail: "諸芸上達", address: "平野区平野上町1-7-26", lat: 34.62639, lng: 135.55194, blessing: "芸能・技術向上" },
+                    { id: 5, name: "太融寺", detail: "無病息災", address: "北区太融寺町3-7", lat: 34.70333, lng: 135.50389, blessing: "健康・病気平癒" },
+                    { id: 6, name: "今宮戎神社", detail: "商売繁盛", address: "浪速区恵美須西1-6-10", lat: 34.65222, lng: 135.50556, blessing: "商売繁盛" },
+                    { id: 7, name: "四天王寺", detail: "家内安全", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "家族の幸福" }
+                ]
+            },
+            shotokutaishi: {
+                name: "聖徳太子ゆかりの寺",
+                icon: "🌸",
+                category: "temples",
+                description: "河内三太子と日本最古の官寺",
+                spots: [
+                    { id: 1, name: "四天王寺", detail: "日本仏法最初の官寺", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "593年創建" },
+                    { id: 2, name: "叡福寺（上の太子）", detail: "聖徳太子御廟", address: "南河内郡太子町太子2146", lat: 34.51722, lng: 135.64639, blessing: "太子の墓所" },
+                    { id: 3, name: "野中寺（中の太子）", detail: "飛鳥時代創建", address: "羽曳野市野々上5-9-24", lat: 34.55361, lng: 135.59917, blessing: "弥勒菩薩像" },
+                    { id: 4, name: "大聖勝軍寺（下の太子）", detail: "物部守屋討伐の地", address: "八尾市太子堂3-3-16", lat: 34.62278, lng: 135.59889, blessing: "戦勝祈願" }
+                ]
+            },
+            joyanokane: {
+                name: "除夜の鐘巡り（大阪市内）",
+                icon: "🔔",
+                category: "temples",
+                description: "大晦日に鐘をつける寺院（8ヶ所）",
+                spots: [
+                    { id: 1, name: "四天王寺", detail: "北鐘堂・南鐘堂・鼓楼", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "先着108名×3ヶ所" },
+                    { id: 2, name: "一心寺", detail: "文治元年開基", address: "天王寺区逢阪2-8-69", lat: 34.65194, lng: 135.50889, blessing: "当日先着順" },
+                    { id: 3, name: "大念佛寺", detail: "日本最初の念仏道場", address: "平野区平野上町1-7-26", lat: 34.62639, lng: 135.55194, blessing: "108組限定" },
+                    { id: 4, name: "恵浄寺", detail: "平野区の古刹", address: "平野区平野市町3-9-17", lat: 34.62500, lng: 135.55833, blessing: "制限なし" },
+                    { id: 5, name: "法性寺", detail: "400年以上の歴史", address: "中央区中寺1-1-32", lat: 34.66722, lng: 135.51500, blessing: "自由参加" },
+                    { id: 6, name: "北御堂", detail: "御堂筋の由来", address: "中央区本町4-1-3", lat: 34.68361, lng: 135.50028, blessing: "先着500名" },
+                    { id: 7, name: "南御堂", detail: "御堂筋の由来", address: "中央区久太郎町4-1-11", lat: 34.68028, lng: 135.50222, blessing: "22時開始" },
+                    { id: 8, name: "太融寺", detail: "弘法大師創建", address: "北区太融寺町3-7", lat: 34.70333, lng: 135.50389, blessing: "0時まで制限なし" }
+                ]
+            },
+            // 公共施設系
+            libraries: {
+                name: "大阪市立図書館",
+                icon: "📚",
+                category: "public",
+                description: "大阪市立図書館24館を巡る",
+                spots: [
+                    { id: 1, name: "中央図書館", address: "西区北堀江4-3-2", lat: 34.67222, lng: 135.48361 },
+                    { id: 2, name: "北図書館", address: "北区本庄東3-2-2", lat: 34.71194, lng: 135.51583 },
+                    { id: 3, name: "都島図書館", address: "都島区中野町2-16-25", lat: 34.70750, lng: 135.53028 },
+                    { id: 4, name: "福島図書館", address: "福島区吉野3-17-23", lat: 34.69444, lng: 135.47028 },
+                    { id: 5, name: "此花図書館", address: "此花区四貫島1-1-18", lat: 34.68250, lng: 135.45111 },
+                    { id: 6, name: "島之内図書館", address: "中央区島之内1-10-13", lat: 34.67139, lng: 135.50583 },
+                    { id: 7, name: "港図書館", address: "港区弁天2-1-5", lat: 34.66611, lng: 135.46083 },
+                    { id: 8, name: "大正図書館", address: "大正区千島3-6-15", lat: 34.64750, lng: 135.47111 },
+                    { id: 9, name: "天王寺図書館", address: "天王寺区上之宮町4-47", lat: 34.66139, lng: 135.52139 },
+                    { id: 10, name: "浪速図書館", address: "浪速区敷津西1-5-23", lat: 34.65417, lng: 135.49833 },
+                    { id: 11, name: "西淀川図書館", address: "西淀川区御幣島1-2-10", lat: 34.71139, lng: 135.45194 },
+                    { id: 12, name: "淀川図書館", address: "淀川区新高3-9-36", lat: 34.73361, lng: 135.48083 },
+                    { id: 13, name: "東淀川図書館", address: "東淀川区東中島1-13-21", lat: 34.73389, lng: 135.52139 },
+                    { id: 14, name: "東成図書館", address: "東成区大今里西3-2-17", lat: 34.67028, lng: 135.54500 },
+                    { id: 15, name: "生野図書館", address: "生野区勝山南3-14-23", lat: 34.64861, lng: 135.53972 },
+                    { id: 16, name: "旭図書館", address: "旭区中宮1-11-14", lat: 34.72556, lng: 135.54139 },
+                    { id: 17, name: "城東図書館", address: "城東区中浜2-8-28", lat: 34.69861, lng: 135.55806 },
+                    { id: 18, name: "鶴見図書館", address: "鶴見区横堤5-3-28", lat: 34.70917, lng: 135.58222 },
+                    { id: 19, name: "阿倍野図書館", address: "阿倍野区阿倍野筋4-19-118", lat: 34.63222, lng: 135.51444 },
+                    { id: 20, name: "住之江図書館", address: "住之江区粉浜1-1-36", lat: 34.61000, lng: 135.48694 },
+                    { id: 21, name: "住吉図書館", address: "住吉区南住吉1-8-26", lat: 34.60528, lng: 135.50500 },
+                    { id: 22, name: "東住吉図書館", address: "東住吉区東田辺2-11-28", lat: 34.61611, lng: 135.52222 },
+                    { id: 23, name: "平野図書館", address: "平野区平野東2-2-95", lat: 34.62139, lng: 135.56917 },
+                    { id: 24, name: "西成図書館", address: "西成区岸里東1-3-16", lat: 34.63806, lng: 135.49889 }
+                ]
+            },
+            kuyakusho: {
+                name: "大阪24区役所",
+                icon: "🏛️",
+                category: "public",
+                description: "大阪市24区の区役所を巡る",
+                spots: [
+                    { id: 1, name: "北区役所", address: "北区扇町2-1-27", lat: 34.70333, lng: 135.51111 },
+                    { id: 2, name: "都島区役所", address: "都島区中野町2-16-20", lat: 34.70750, lng: 135.52972 },
+                    { id: 3, name: "福島区役所", address: "福島区大開1-8-1", lat: 34.69111, lng: 135.47167 },
+                    { id: 4, name: "此花区役所", address: "此花区春日出北1-8-4", lat: 34.68056, lng: 135.45000 },
+                    { id: 5, name: "中央区役所", address: "中央区久太郎町1-2-27", lat: 34.68028, lng: 135.51583 },
+                    { id: 6, name: "西区役所", address: "西区新町4-5-14", lat: 34.67528, lng: 135.48639 },
+                    { id: 7, name: "港区役所", address: "港区市岡1-15-25", lat: 34.66583, lng: 135.46667 },
+                    { id: 8, name: "大正区役所", address: "大正区千島3-18-21", lat: 34.64694, lng: 135.47278 },
+                    { id: 9, name: "天王寺区役所", address: "天王寺区真法院町20-33", lat: 34.65806, lng: 135.52028 },
+                    { id: 10, name: "浪速区役所", address: "浪速区敷津東1-4-20", lat: 34.65472, lng: 135.50194 },
+                    { id: 11, name: "西淀川区役所", address: "西淀川区御幣島1-2-10", lat: 34.71139, lng: 135.45194 },
+                    { id: 12, name: "淀川区役所", address: "淀川区十三東2-3-3", lat: 34.72222, lng: 135.47611 },
+                    { id: 13, name: "東淀川区役所", address: "東淀川区豊新2-1-4", lat: 34.74611, lng: 135.52111 },
+                    { id: 14, name: "東成区役所", address: "東成区大今里西2-8-4", lat: 34.67111, lng: 135.54306 },
+                    { id: 15, name: "生野区役所", address: "生野区勝山南3-1-19", lat: 34.64917, lng: 135.53806 },
+                    { id: 16, name: "旭区役所", address: "旭区大宮1-1-17", lat: 34.72139, lng: 135.54028 },
+                    { id: 17, name: "城東区役所", address: "城東区中央3-5-45", lat: 34.69556, lng: 135.55583 },
+                    { id: 18, name: "鶴見区役所", address: "鶴見区横堤5-4-19", lat: 34.70944, lng: 135.58139 },
+                    { id: 19, name: "阿倍野区役所", address: "阿倍野区文の里1-1-40", lat: 34.63722, lng: 135.51917 },
+                    { id: 20, name: "住之江区役所", address: "住之江区御崎3-1-17", lat: 34.61222, lng: 135.47028 },
+                    { id: 21, name: "住吉区役所", address: "住吉区南住吉3-15-55", lat: 34.60056, lng: 135.50667 },
+                    { id: 22, name: "東住吉区役所", address: "東住吉区東田辺1-13-4", lat: 34.61889, lng: 135.52167 },
+                    { id: 23, name: "平野区役所", address: "平野区背戸口3-8-19", lat: 34.62028, lng: 135.55389 },
+                    { id: 24, name: "西成区役所", address: "西成区岸里1-5-20", lat: 34.63917, lng: 135.49944 }
+                ]
+            }
+        };
+
         // ミッションデータ
         const missions = [
-            // トマソン・建築の謎系
             { emoji: '🪜', text: '意味のない階段を見つけよう', hint: 'どこにも行かない純粋階段を探してみよう' },
             { emoji: '🚪', text: '開かない扉を見つけよう', hint: '壁の中のドア、2階の宙ぶらりんドアなど' },
             { emoji: '🪟', text: '塞がれた窓を見つけよう', hint: 'レンガやコンクリートで塞がれた窓枠' },
             { emoji: '🏗️', text: '工事現場を見つけよう', hint: '何ができる？半年後に来てみよう' },
             { emoji: '🏚️', text: '廃墟っぽい建物を見つけよう', hint: '時が止まった場所' },
-            { emoji: '📦', text: 'ブルーシートを見つけよう', hint: '何が隠されている？' },
-            { emoji: '🧱', text: '中途半端な壁を見つけよう', hint: 'なぜここで終わる？' },
-            { emoji: '🪧', text: '使われていない看板を見つけよう', hint: '店はなくなったのに看板だけ' },
-            { emoji: '🚰', text: '不思議な配管を見つけよう', hint: 'なぜここに？どこへ続く？' },
-            
-            // 看板・文字系
             { emoji: '✍️', text: '手書きの看板を見つけよう', hint: '店主の人柄が出る' },
             { emoji: '🏮', text: '昭和の雰囲気の看板を見つけよう', hint: 'ホーロー看板、古い字体' },
-            { emoji: '😂', text: '誤字・脱字を見つけよう', hint: 'なぜ誰も直さない？' },
-            { emoji: '📢', text: '面白いキャッチコピーを見つけよう', hint: 'クスッと笑える宣伝文句' },
-            { emoji: '🔤', text: '消えかけの文字を見つけよう', hint: 'かろうじて読める看板や標識' },
-            { emoji: '⚠️', text: '意味不明な注意書きを見つけよう', hint: 'なぜこの注意が必要？' },
-            
-            // レトロ・時代系
-            { emoji: '🏠', text: 'レトロな建物を見つけよう', hint: '昭和の面影を残す建物' },
-            { emoji: '🎨', text: 'タイル張りの建物を見つけよう', hint: 'モザイクタイル、銭湯タイルなど' },
-            { emoji: '📞', text: '使われていない電話ボックスを見つけよう', hint: '今は誰も使わない' },
-            { emoji: '🏪', text: '昔ながらの商店を見つけよう', hint: 'シャッター商店街の生き残り' },
-            { emoji: '🏭', text: '煙突を見つけよう', hint: 'もう煙は出ていない？' },
-            { emoji: '🪟', text: '格子窓を見つけよう', hint: '昔の防犯対策' },
-            
-            // ディテール・装飾系
             { emoji: '⭕', text: '面白いマンホールを見つけよう', hint: 'デザインマンホール、ご当地柄' },
-            { emoji: '🔲', text: '変わった形の窓を見つけよう', hint: '丸窓、三角窓、船窓など' },
-            { emoji: '🚪', text: '装飾されたドアを見つけよう', hint: '彫刻、ステンドグラスなど' },
-            { emoji: '🛤️', text: '美しい手すりを見つけよう', hint: '鉄細工、装飾的なデザイン' },
-            { emoji: '🌀', text: '渦巻き模様を見つけよう', hint: '看板、装飾、螺旋階段など' },
-            { emoji: '🐉', text: '動物の装飾を見つけよう', hint: '龍、獅子、鳥など' },
-            
-            // 謎・不思議系
-            { emoji: '❓', text: 'なぜここに？を見つけよう', hint: '場違いな物体や配置' },
-            { emoji: '🎭', text: '謎のオブジェを見つけよう', hint: '意味不明な彫刻や造形物' },
-            { emoji: '🪴', text: 'ビルの屋上の植物を見つけよう', hint: '誰が世話を？' },
-            { emoji: '🏺', text: '民家の庭の像を見つけよう', hint: 'たぬき、カエル、お地蔵さんなど' },
-            { emoji: '🔔', text: '鐘を見つけよう', hint: 'いつ鳴る？どんな音？' },
-            { emoji: '🪞', text: '鏡を見つけよう', hint: '見通しの悪い角の安全鏡' },
-            
-            // 植物・自然系
             { emoji: '🌱', text: '隙間の植物を見つけよう', hint: 'アスファルトの割れ目から' },
-            { emoji: '🌳', text: 'ビルの間の木を見つけよう', hint: '都会の中の自然' },
-            { emoji: '🍃', text: 'コケを見つけよう', hint: '湿った場所の緑' },
-            { emoji: '🌸', text: '意外な場所の花を見つけよう', hint: '塀の上、屋根の上など' },
-            { emoji: '🌿', text: '名前を知らない植物を見つけて調べよう', hint: 'Google Lensを使うと簡単' },
-            { emoji: '🌺', text: '見かけた花の名前を調べよう', hint: '季節の花を観察' },
-            { emoji: '🍂', text: '街路樹の名前を調べよう', hint: 'イチョウ？ケヤキ？プラタナス？' },
-            { emoji: '☘️', text: '雑草の名前を調べよう', hint: '実は可愛い名前だったり' },
-            { emoji: '🌲', text: '大きな木を見つけよう', hint: '樹齢何年？' },
-            
-            // 生き物系
             { emoji: '🐦', text: '鳥の巣を見つけよう', hint: '看板の裏、軒下など' },
-            { emoji: '🐈', text: '看板猫/看板犬がいる店を探そう', hint: '店番してる動物' },
-            { emoji: '🦜', text: '見かけた鳥の名前を調べよう', hint: '鳴き声、色、大きさに注目' },
-            { emoji: '🦋', text: '蝶の名前を調べよう', hint: 'アゲハ？モンシロチョウ？' },
-            
-            // 色・光系
             { emoji: '🌈', text: '同じ色が3つ並んでいる場所を見つけよう', hint: '偶然の配色を楽しむ' },
-            { emoji: '☀️', text: '面白い影を見つけよう', hint: '建物の影、木漏れ日' },
-            { emoji: '💎', text: '窓に映る反射を見つけよう', hint: 'ビルに映るビル' },
-            { emoji: '🎨', text: '鮮やかな色の建物を見つけよう', hint: 'ピンク、青、黄色など' },
-            
-            // 動線・配置系
             { emoji: '🔀', text: '三叉路を見つけよう', hint: 'Y字路、どっちに行く？' },
-            { emoji: '🛤️', text: '行き止まりを見つけよう', hint: '突然終わる道' },
-            { emoji: '🗻', text: '急な坂道を見つけよう', hint: 'これは登れない！' },
-            { emoji: '🌉', text: '高低差を感じよう', hint: '階段、スロープ、段差' },
-            
-            // 歴史・文化調べる系
-            { emoji: '🏛️', text: '気になる建物の歴史を調べよう', hint: 'いつ建った？何に使われていた？' },
             { emoji: '⛩️', text: '見かけた神社の由来を調べよう', hint: '祀られているのは誰？' },
             { emoji: '🗿', text: '石碑の文字を読んでみよう', hint: '何が書いてある？' },
-            { emoji: '📍', text: '地名の由来を調べよう', hint: 'なぜこの地名？' },
-            { emoji: '🌉', text: '見かけた橋の名前の由来を調べよう', hint: 'なぜこの名前？' },
-            { emoji: '🚉', text: '駅名の由来を調べよう', hint: '地名？人名？' },
-            
-            // 想像・感覚系
-            { emoji: '🔨', text: '工事現場を見つけて完成を想像しよう', hint: '半年後にまた来てみよう' },
-            { emoji: '🏚️', text: '気になる建物の過去を想像しよう', hint: '昔は何だった？誰がいた？' },
-            { emoji: '👂', text: '耳を澄まして音を聞こう', hint: '鳥、水、風、街の音' },
-            { emoji: '👃', text: '匂いに意識を向けよう', hint: '季節の匂い、店の匂い' }
+            { emoji: '👂', text: '耳を澄まして音を聞こう', hint: '鳥、水、風、街の音' }
         ];
 
-        function showRandomMission() {
-            const randomIndex = Math.floor(Math.random() * missions.length);
-            const mission = missions[randomIndex];
-            
-            document.getElementById('missionEmoji').textContent = mission.emoji;
-            document.getElementById('missionText').textContent = mission.text;
-            document.getElementById('missionHint').textContent = mission.hint || '';
-            
-            document.getElementById('missionDisplay').classList.remove('hidden');
-        }
-
+        // ========================================
+        // 初期化
+        // ========================================
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -460,8 +601,6 @@
                 });
 
                 geocoder = new google.maps.Geocoder();
-                
-                // Places Autocompleteの初期化
                 initAutocomplete();
 
                 new google.maps.Marker({
@@ -479,29 +618,50 @@
                 });
 
                 loadSavedDestinations();
+                renderRallyList();
             }, 100);
         }
 
+        // ========================================
+        // モード切り替え
+        // ========================================
         function setMode(mode) {
             currentMode = mode;
             
-            // ボタンのスタイル切り替え
             const loopBtn = document.getElementById('loopModeBtn');
             const onewayBtn = document.getElementById('onewayModeBtn');
+            const stampBtn = document.getElementById('stampModeBtn');
+            
+            // ボタンスタイルリセット
+            loopBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
+            onewayBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
+            stampBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-purple-500 transition-all';
+            
+            // セクション表示切り替え
+            const routeSection = document.getElementById('routeCreationSection');
+            const stampSection = document.getElementById('stampRallySection');
             
             if (mode === 'loop') {
                 loopBtn.className = 'p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all';
-                onewayBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
+                routeSection.classList.remove('hidden');
+                stampSection.classList.add('hidden');
                 document.getElementById('destinationSection').classList.add('hidden');
                 document.getElementById('createRouteBtn').textContent = '🗺️ ルートを作成（3パターン生成）';
-            } else {
-                loopBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
+            } else if (mode === 'oneway') {
                 onewayBtn.className = 'p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all';
+                routeSection.classList.remove('hidden');
+                stampSection.classList.add('hidden');
                 document.getElementById('destinationSection').classList.remove('hidden');
                 document.getElementById('createRouteBtn').textContent = '🗺️ ルートを作成';
+            } else if (mode === 'stamp') {
+                stampBtn.className = 'p-4 rounded-xl border-2 border-purple-500 bg-purple-50 transition-all';
+                routeSection.classList.add('hidden');
+                stampSection.classList.remove('hidden');
+                clearStampMarkers();
+                renderRallyList();
             }
 
-            // 前のルートをクリア
+            // ルート関連をクリア
             if (currentPolyline) {
                 currentPolyline.setMap(null);
                 currentPolyline = null;
@@ -510,13 +670,432 @@
             document.getElementById('routeSwitch').classList.add('hidden');
         }
 
+        // ========================================
+        // スタンプラリー機能
+        // ========================================
+        function renderRallyList(category = 'all') {
+            const container = document.getElementById('rallyList');
+            container.innerHTML = '';
+            
+            for (const [key, rally] of Object.entries(stampRallies)) {
+                if (category !== 'all' && rally.category !== category) continue;
+                
+                const visited = JSON.parse(localStorage.getItem(`stamp_${key}`) || '[]');
+                const progress = `${visited.length}/${rally.spots.length}`;
+                const isComplete = visited.length === rally.spots.length;
+                
+                const card = document.createElement('div');
+                card.className = `stamp-card p-4 rounded-xl border-2 cursor-pointer ${isComplete ? 'stamp-visited' : 'stamp-unvisited'}`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="text-3xl">${rally.icon}</div>
+                            <div>
+                                <div class="font-bold">${rally.name}</div>
+                                <div class="text-xs text-gray-600">${rally.description}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold ${isComplete ? 'text-green-600' : 'text-gray-600'}">${progress}</div>
+                            ${isComplete ? '<div class="text-xs text-green-600">🏆 制覇！</div>' : ''}
+                        </div>
+                    </div>
+                `;
+                card.onclick = () => openRallyDetail(key);
+                container.appendChild(card);
+            }
+        }
+
+        function filterByCategory(category) {
+            // ボタンのスタイル更新
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('border-gray-200');
+            });
+            event.target.classList.add('active');
+            event.target.classList.remove('border-gray-200');
+            
+            renderRallyList(category);
+        }
+
+        function openRallyDetail(rallyKey) {
+            currentRallyKey = rallyKey;
+            const rally = stampRallies[rallyKey];
+            
+            document.getElementById('rallyDetailTitle').textContent = `${rally.icon} ${rally.name}`;
+            document.getElementById('rallyDetailDesc').textContent = rally.description;
+            
+            const visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+            document.getElementById('rallyProgress').textContent = `${visited.length}/${rally.spots.length} 訪問済み`;
+            
+            renderSpotList(rallyKey);
+            showSpotsOnMap(rallyKey);
+            
+            document.getElementById('rallyDetailSection').classList.remove('hidden');
+        }
+
+        function closeRallyDetail() {
+            currentRallyKey = null;
+            document.getElementById('rallyDetailSection').classList.add('hidden');
+            clearStampMarkers();
+            renderRallyList();
+        }
+
+        function renderSpotList(rallyKey, sortMode = 'default') {
+            const rally = stampRallies[rallyKey];
+            const visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+            const container = document.getElementById('spotList');
+            container.innerHTML = '';
+            
+            let spots = [...rally.spots];
+            
+            // ソート
+            if (sortMode === 'distance' && userLocation) {
+                spots.sort((a, b) => {
+                    const distA = calculateDistance(userLocation, { lat: a.lat, lng: a.lng });
+                    const distB = calculateDistance(userLocation, { lat: b.lat, lng: b.lng });
+                    return distA - distB;
+                });
+            } else if (sortMode === 'unvisited') {
+                spots.sort((a, b) => {
+                    const aVisited = visited.includes(a.id);
+                    const bVisited = visited.includes(b.id);
+                    if (aVisited === bVisited) return 0;
+                    return aVisited ? 1 : -1;
+                });
+            }
+            
+            spots.forEach(spot => {
+                const isVisited = visited.includes(spot.id);
+                const distance = userLocation ? calculateDistance(userLocation, { lat: spot.lat, lng: spot.lng }) : null;
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border-2 ${isVisited ? 'stamp-visited' : 'stamp-unvisited'}`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">${isVisited ? '✅' : '⬜'}</span>
+                                <span class="font-bold">${spot.name}</span>
+                            </div>
+                            ${spot.detail ? `<div class="text-sm text-gray-600 ml-7">${spot.detail}</div>` : ''}
+                            ${spot.blessing ? `<div class="text-xs text-purple-600 ml-7">🙏 ${spot.blessing}</div>` : ''}
+                            ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
+                        </div>
+                        ${!isVisited ? `
+                            <button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600">
+                                チェックイン
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function sortSpots(mode) {
+            currentSortMode = mode;
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active', 'bg-green-100'));
+            event.target.classList.add('active', 'bg-green-100');
+            renderSpotList(currentRallyKey, mode);
+        }
+
+        function showSpotsOnMap(rallyKey) {
+            clearStampMarkers();
+            
+            const rally = stampRallies[rallyKey];
+            const visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+            const bounds = new google.maps.LatLngBounds();
+            
+            if (userLocation) {
+                bounds.extend(userLocation);
+            }
+            
+            rally.spots.forEach(spot => {
+                const isVisited = visited.includes(spot.id);
+                const marker = new google.maps.Marker({
+                    position: { lat: spot.lat, lng: spot.lng },
+                    map: map,
+                    title: spot.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: isVisited ? '#10b981' : '#ef4444',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
+                });
+                
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div style="padding:8px;"><strong>${spot.name}</strong><br>${spot.detail || ''}<br>${isVisited ? '✅ 訪問済み' : '⬜ 未訪問'}</div>`
+                });
+                
+                marker.addListener('click', () => infoWindow.open(map, marker));
+                stampMarkers.push(marker);
+                bounds.extend({ lat: spot.lat, lng: spot.lng });
+            });
+            
+            map.fitBounds(bounds);
+        }
+
+        function clearStampMarkers() {
+            stampMarkers.forEach(marker => marker.setMap(null));
+            stampMarkers = [];
+        }
+
+        // ========================================
+        // チェックイン機能（重複連動対応）
+        // ========================================
+        function checkIn(rallyKey, spotId) {
+            if (!navigator.geolocation) {
+                alert('位置情報がサポートされていません');
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userPos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    
+                    const rally = stampRallies[rallyKey];
+                    const spot = rally.spots.find(s => s.id === spotId);
+                    const spotPos = { lat: spot.lat, lng: spot.lng };
+                    
+                    const distance = calculateDistance(userPos, spotPos);
+                    
+                    if (distance <= 0.1) { // 100m以内
+                        // チェックイン成功
+                        let visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+                        if (!visited.includes(spotId)) {
+                            visited.push(spotId);
+                            localStorage.setItem(`stamp_${rallyKey}`, JSON.stringify(visited));
+                        }
+                        
+                        // 他のラリーで重複するスポットを検出
+                        const overlaps = findOverlappingSpots(spot.name, spot.lat, spot.lng, rallyKey);
+                        
+                        // 全制覇チェック
+                        const isComplete = visited.length === rally.spots.length;
+                        
+                        if (overlaps.length > 0) {
+                            showOverlapDialog(spot.name, spot.blessing, overlaps, isComplete, rallyKey);
+                        } else if (isComplete) {
+                            showCompleteModal(rally.name);
+                        } else {
+                            showCheckinSuccess(spot.name, spot.blessing);
+                        }
+                        
+                        openRallyDetail(rallyKey);
+                    } else {
+                        alert(`まだ${spot.name}から${(distance * 1000).toFixed(0)}m離れています。\n100m以内に近づいてください。`);
+                    }
+                },
+                (error) => {
+                    alert('位置情報を取得できませんでした');
+                }
+            );
+        }
+
+        function findOverlappingSpots(spotName, spotLat, spotLng, currentRallyKey) {
+            const overlaps = [];
+            const baseSpotName = spotName.replace(/（.*）/g, '').replace(/\(.*\)/g, '');
+            
+            for (const [rallyKey, rally] of Object.entries(stampRallies)) {
+                if (rallyKey === currentRallyKey) continue;
+                
+                for (const spot of rally.spots) {
+                    const baseTargetName = spot.name.replace(/（.*）/g, '').replace(/\(.*\)/g, '');
+                    const distance = calculateDistance(
+                        { lat: spotLat, lng: spotLng },
+                        { lat: spot.lat, lng: spot.lng }
+                    );
+                    
+                    if (baseSpotName.includes(baseTargetName) || 
+                        baseTargetName.includes(baseSpotName) ||
+                        distance <= 0.05) {
+                        
+                        const visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+                        if (!visited.includes(spot.id)) {
+                            overlaps.push({
+                                rallyKey: rallyKey,
+                                rallyName: rally.name,
+                                rallyIcon: rally.icon,
+                                spotId: spot.id,
+                                spotName: spot.name,
+                                spotDetail: spot.detail
+                            });
+                        }
+                    }
+                }
+            }
+            return overlaps;
+        }
+
+        function showOverlapDialog(spotName, blessing, overlaps, isComplete, currentRallyKey) {
+            let checkboxes = overlaps.map((o, i) => `
+                <label style="display:flex;align-items:center;padding:10px;background:#f5f5f5;border-radius:8px;margin:5px 0;cursor:pointer;">
+                    <input type="checkbox" id="overlap_${i}" data-rally="${o.rallyKey}" data-spot="${o.spotId}" checked style="width:20px;height:20px;margin-right:10px;">
+                    <div>
+                        <div style="font-weight:bold;">${o.rallyIcon} ${o.rallyName}</div>
+                        <div style="font-size:12px;color:#666;">${o.spotName}${o.spotDetail ? ' - ' + o.spotDetail : ''}</div>
+                    </div>
+                </label>
+            `).join('');
+            
+            document.getElementById('checkinContent').innerHTML = `
+                <div class="text-5xl mb-4">✅</div>
+                <h2 class="text-xl font-bold mb-2">チェックイン成功！</h2>
+                <p class="font-bold text-lg">${spotName}</p>
+                ${blessing ? `<p class="text-purple-600 mt-2">🙏 ${blessing}</p>` : ''}
+                
+                <div class="mt-4 p-4 bg-orange-50 rounded-xl text-left">
+                    <p class="font-bold mb-2">📍 この場所は他のスタンプラリーにも含まれています：</p>
+                    ${checkboxes}
+                </div>
+                
+                <button onclick="applyOverlapCheckins(${isComplete}, '${currentRallyKey}')" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">
+                    選択したラリーも訪問済みにする
+                </button>
+                <button onclick="closeCheckinModal();${isComplete ? `showCompleteModal(stampRallies['${currentRallyKey}'].name)` : ''}" class="w-full mt-2 py-3 bg-gray-200 rounded-xl font-bold">
+                    このラリーだけ
+                </button>
+            `;
+            document.getElementById('checkinModal').style.display = 'flex';
+        }
+
+        function applyOverlapCheckins(isComplete, currentRallyKey) {
+            const checkboxes = document.querySelectorAll('#checkinContent input[type="checkbox"]:checked');
+            let appliedCount = 0;
+            let completedRallies = [];
+            
+            checkboxes.forEach(cb => {
+                const rallyKey = cb.dataset.rally;
+                const spotId = parseInt(cb.dataset.spot);
+                
+                let visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+                if (!visited.includes(spotId)) {
+                    visited.push(spotId);
+                    localStorage.setItem(`stamp_${rallyKey}`, JSON.stringify(visited));
+                    appliedCount++;
+                    
+                    if (visited.length === stampRallies[rallyKey].spots.length) {
+                        completedRallies.push(stampRallies[rallyKey].name);
+                    }
+                }
+            });
+            
+            let resultHtml = `
+                <div class="text-5xl mb-4">${completedRallies.length > 0 || isComplete ? '🏆' : '✅'}</div>
+                <h2 class="text-xl font-bold mb-2">${appliedCount}件のラリーに反映しました！</h2>
+            `;
+            
+            if (isComplete) {
+                completedRallies.unshift(stampRallies[currentRallyKey].name);
+            }
+            
+            if (completedRallies.length > 0) {
+                resultHtml += `
+                    <div class="mt-4 p-4 bg-green-50 rounded-xl">
+                        <p class="font-bold">🎉 全制覇達成！</p>
+                        ${completedRallies.map(name => `<p>・${name}</p>`).join('')}
+                    </div>
+                `;
+            }
+            
+            resultHtml += `<button onclick="closeCheckinModal()" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">閉じる</button>`;
+            
+            document.getElementById('checkinContent').innerHTML = resultHtml;
+        }
+
+        function showCheckinSuccess(spotName, blessing) {
+            document.getElementById('checkinContent').innerHTML = `
+                <div class="text-5xl mb-4">✅</div>
+                <h2 class="text-xl font-bold mb-2">チェックイン成功！</h2>
+                <p class="font-bold text-lg">${spotName}</p>
+                ${blessing ? `<p class="text-purple-600 mt-2">🙏 ${blessing}</p>` : ''}
+                <button onclick="closeCheckinModal()" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">閉じる</button>
+            `;
+            document.getElementById('checkinModal').style.display = 'flex';
+        }
+
+        function showCompleteModal(rallyName) {
+            document.getElementById('checkinContent').innerHTML = `
+                <div class="text-5xl mb-4">🏆</div>
+                <h2 class="text-xl font-bold mb-2">全制覇おめでとう！</h2>
+                <p class="font-bold text-lg">${rallyName}</p>
+                <p class="mt-2">すべてのスポットを訪問しました！</p>
+                <div class="text-4xl mt-4">🎉🎊🎉</div>
+                <button onclick="closeCheckinModal()" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">閉じる</button>
+            `;
+            document.getElementById('checkinModal').style.display = 'flex';
+        }
+
+        function closeCheckinModal() {
+            document.getElementById('checkinModal').style.display = 'none';
+        }
+
+        // 近くの未訪問スポットへルート作成
+        function createRouteToNearestSpot() {
+            if (!currentRallyKey || !userLocation) return;
+            
+            const rally = stampRallies[currentRallyKey];
+            const visited = JSON.parse(localStorage.getItem(`stamp_${currentRallyKey}`) || '[]');
+            
+            const unvisitedSpots = rally.spots.filter(s => !visited.includes(s.id));
+            
+            if (unvisitedSpots.length === 0) {
+                alert('すべてのスポットを訪問済みです！');
+                return;
+            }
+            
+            // 最も近い未訪問スポットを見つける
+            let nearest = null;
+            let nearestDistance = Infinity;
+            
+            unvisitedSpots.forEach(spot => {
+                const dist = calculateDistance(userLocation, { lat: spot.lat, lng: spot.lng });
+                if (dist < nearestDistance) {
+                    nearestDistance = dist;
+                    nearest = spot;
+                }
+            });
+            
+            if (nearest) {
+                // 片道モードに切り替えて目的地を設定
+                setMode('oneway');
+                selectDestination({
+                    name: nearest.name,
+                    lat: nearest.lat,
+                    lng: nearest.lng
+                });
+                
+                alert(`${nearest.name}への経路を作成します。\n目標歩数を設定して「ルートを作成」ボタンを押してください。`);
+            }
+        }
+
+        // ========================================
+        // ルート作成機能（既存コードを維持）
+        // ========================================
+        function showRandomMission() {
+            const randomIndex = Math.floor(Math.random() * missions.length);
+            const mission = missions[randomIndex];
+            
+            document.getElementById('missionEmoji').textContent = mission.emoji;
+            document.getElementById('missionText').textContent = mission.text;
+            document.getElementById('missionHint').textContent = mission.hint || '';
+            
+            document.getElementById('missionDisplay').classList.remove('hidden');
+        }
+
         function updateSteps(value) {
             currentSteps = parseInt(value);
             document.getElementById('stepsDisplay').textContent = currentSteps.toLocaleString();
             const distance = ((currentSteps * 0.7) / 1000).toFixed(1);
             document.getElementById('distanceDisplay').textContent = `歩 (${distance}km)`;
             
-            // 片道モードで目的地が選択されている場合、寄り道分を更新
             if (currentMode === 'oneway' && selectedDestination) {
                 updateDestinationDisplay();
             }
@@ -528,35 +1107,29 @@
             updateSteps(value);
         }
 
-        // Places Autocompleteの初期化
         function initAutocomplete() {
             const input = document.getElementById('destAddress');
             
-            // Autocompleteオプション
             const options = {
-                componentRestrictions: { country: 'jp' }, // 日本に限定
+                componentRestrictions: { country: 'jp' },
                 fields: ['formatted_address', 'geometry', 'name', 'place_id'],
-                types: ['establishment', 'geocode'] // 施設と住所
+                types: ['establishment', 'geocode']
             };
 
             autocomplete = new google.maps.places.Autocomplete(input, options);
 
-            // 地図の表示範囲をAutocompleteに反映
             if (map) {
                 autocomplete.bindTo('bounds', map);
             }
 
-            // 場所が選択されたときのイベント
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
 
                 if (!place.geometry || !place.geometry.location) {
-                    console.log('選択された場所の位置情報が取得できませんでした');
                     autocompletePlace = null;
                     return;
                 }
 
-                // 選択された場所情報を保存
                 autocompletePlace = {
                     name: place.name || place.formatted_address,
                     address: place.formatted_address,
@@ -565,12 +1138,9 @@
                         lng: place.geometry.location.lng()
                     }
                 };
-
-                console.log('目的地が選択されました:', autocompletePlace);
             });
         }
 
-        // 登録済み目的地を読み込む
         function loadSavedDestinations() {
             const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
             const container = document.getElementById('savedDestinations');
@@ -602,7 +1172,7 @@
             document.getElementById('addDestinationModal').classList.add('hidden');
             document.getElementById('destName').value = '';
             document.getElementById('destAddress').value = '';
-            autocompletePlace = null; // リセット
+            autocompletePlace = null;
         }
 
         async function saveDestination() {
@@ -619,7 +1189,6 @@
                 return;
             }
             
-            // Autocompleteで選択された場所があればそれを使う（文字列一致チェック緩和）
             if (autocompletePlace) {
                 const dest = {
                     name: name,
@@ -632,24 +1201,18 @@
                 destinations.push(dest);
                 localStorage.setItem('savedDestinations', JSON.stringify(destinations));
                 
-                // 保存したものをそのまま選択
                 selectDestination(dest);
-                
-                autocompletePlace = null; // リセット
+                autocompletePlace = null;
                 closeAddDestination();
                 loadSavedDestinations();
                 return;
             }
             
-            // Autocompleteで選択されていない場合は従来通りGeocoding
             try {
                 const results = await new Promise((resolve, reject) => {
                     geocoder.geocode({ address: addressInput }, (results, status) => {
-                        if (status === 'OK') {
-                            resolve(results);
-                        } else {
-                            reject(status);
-                        }
+                        if (status === 'OK') resolve(results);
+                        else reject(status);
                     });
                 });
                 
@@ -665,17 +1228,14 @@
                 destinations.push(dest);
                 localStorage.setItem('savedDestinations', JSON.stringify(destinations));
                 
-                // 保存したものをそのまま選択
                 selectDestination(dest);
-                
                 closeAddDestination();
                 loadSavedDestinations();
             } catch (error) {
-                alert('住所が見つかりませんでした。候補から選択するか、正しい住所を入力してください。');
+                alert('住所が見つかりませんでした。');
             }
         }
 
-        // 登録せずにすぐ使う
         async function useDestinationNow() {
             const addressInput = document.getElementById('destAddress').value.trim();
             
@@ -684,45 +1244,36 @@
                 return;
             }
             
-            // Autocompleteで選択された場所があればそれを使う
             if (autocompletePlace) {
-                const dest = {
+                selectDestination({
                     name: autocompletePlace.name,
                     address: autocompletePlace.address,
                     lat: autocompletePlace.location.lat,
                     lng: autocompletePlace.location.lng
-                };
-                
-                selectDestination(dest);
-                autocompletePlace = null; // リセット
+                });
+                autocompletePlace = null;
                 closeAddDestination();
                 return;
             }
             
-            // Autocompleteで選択されていない場合はGeocoding
             try {
                 const results = await new Promise((resolve, reject) => {
                     geocoder.geocode({ address: addressInput }, (results, status) => {
-                        if (status === 'OK') {
-                            resolve(results);
-                        } else {
-                            reject(status);
-                        }
+                        if (status === 'OK') resolve(results);
+                        else reject(status);
                     });
                 });
                 
                 const location = results[0].geometry.location;
-                const dest = {
+                selectDestination({
                     name: results[0].formatted_address,
                     address: results[0].formatted_address,
                     lat: location.lat(),
                     lng: location.lng()
-                };
-                
-                selectDestination(dest);
+                });
                 closeAddDestination();
             } catch (error) {
-                alert('住所が見つかりませんでした。候補から選択するか、正しい住所を入力してください。');
+                alert('住所が見つかりませんでした。');
             }
         }
 
@@ -748,7 +1299,6 @@
         function selectDestination(dest) {
             selectedDestination = { ...dest };
             
-            // 地図にマーカーを表示
             if (destinationMarker) {
                 destinationMarker.setMap(null);
             }
@@ -768,9 +1318,7 @@
                 }
             });
             
-            // 地図の中心を移動
             map.panTo({ lat: dest.lat, lng: dest.lng });
-            
             updateDestinationDisplay();
         }
 
@@ -786,10 +1334,10 @@
             
             if (detourDistance > 0) {
                 document.getElementById('selectedDestinationDistance').textContent = 
-                    `直線: ${directDistance.toFixed(1)}km (${directSteps.toLocaleString()}歩) + 寄り道: ${detourDistance.toFixed(1)}km (${Math.round((detourDistance / 0.7) * 1000).toLocaleString()}歩)`;
+                    `直線: ${directDistance.toFixed(1)}km + 寄り道: ${detourDistance.toFixed(1)}km`;
             } else {
                 document.getElementById('selectedDestinationDistance').textContent = 
-                    `直線距離: ${directDistance.toFixed(1)}km (${directSteps.toLocaleString()}歩) ※設定歩数より長いため最短ルートになります`;
+                    `直線距離: ${directDistance.toFixed(1)}km（設定歩数より長いため最短ルート）`;
             }
             
             document.getElementById('selectedDestinationDisplay').classList.remove('hidden');
@@ -799,17 +1347,13 @@
             if (!map) return;
             
             isSelectingFromMap = true;
-            document.getElementById('mapSelectBtn').textContent = '📍 地図をタップして目的地を選択中...';
+            document.getElementById('mapSelectBtn').textContent = '📍 地図をタップして選択中...';
             document.getElementById('mapSelectBtn').classList.add('bg-green-100', 'text-green-700');
             
-            // 一時的なマーカー
             let tempMarker = null;
             
             const listener = map.addListener('click', (e) => {
-                // 一時マーカーを削除
-                if (tempMarker) {
-                    tempMarker.setMap(null);
-                }
+                if (tempMarker) tempMarker.setMap(null);
                 
                 const selectedLat = e.latLng.lat();
                 const selectedLng = e.latLng.lng();
@@ -820,9 +1364,7 @@
                     lng: selectedLng
                 };
                 
-                if (destinationMarker) {
-                    destinationMarker.setMap(null);
-                }
+                if (destinationMarker) destinationMarker.setMap(null);
                 
                 destinationMarker = new google.maps.Marker({
                     position: e.latLng,
@@ -841,36 +1383,12 @@
                 
                 updateDestinationDisplay();
                 isSelectingFromMap = false;
-                document.getElementById('mapSelectBtn').textContent = '🗺️ 地図から選択';
+                document.getElementById('mapSelectBtn').textContent = '🗺️ 地図から選択（おすすめ）';
                 document.getElementById('mapSelectBtn').classList.remove('bg-green-100', 'text-green-700');
                 google.maps.event.removeListener(listener);
                 google.maps.event.removeListener(moveListener);
-                
-                // 保存するか確認
-                const shouldSave = confirm('この場所を保存しますか？\n\n「OK」→ 名前をつけて保存\n「キャンセル」→ 今回だけ使用');
-                
-                if (shouldSave) {
-                    const name = prompt('目的地の名前を入力してください\n（例: 自宅、職場、カフェ）', '');
-                    if (name && name.trim()) {
-                        const dest = {
-                            name: name.trim(),
-                            address: '地図で選択',
-                            lat: selectedLat,
-                            lng: selectedLng
-                        };
-                        
-                        const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
-                        destinations.push(dest);
-                        localStorage.setItem('savedDestinations', JSON.stringify(destinations));
-                        
-                        selectedDestination.name = name.trim();
-                        loadSavedDestinations();
-                        alert('保存しました！');
-                    }
-                }
             });
             
-            // マウスムーブで仮マーカーを表示（プレビュー）
             const moveListener = map.addListener('mousemove', (e) => {
                 if (tempMarker) {
                     tempMarker.setPosition(e.latLng);
@@ -906,7 +1424,6 @@
             button.disabled = true;
             button.textContent = currentMode === 'loop' ? '⏳ ルート作成中...（3パターン）' : '⏳ ルート作成中...';
 
-            // 前回のポリラインを削除
             if (currentPolyline) {
                 currentPolyline.setMap(null);
                 currentPolyline = null;
@@ -917,25 +1434,22 @@
                 const avoidHighways = document.getElementById('avoidHighways').checked;
 
                 if (currentMode === 'loop') {
-                    // 周回モード - 複数候補を生成して一筆書きのものを選択
                     allRoutes = [];
                     const routePromises = [];
-                    const candidateCount = 6; // 多めに候補を生成
+                    const candidateCount = 6;
 
                     for (let i = 0; i < candidateCount; i++) {
                         const waypoints = generateWaypoints(userLocation, targetDistance, i * 1000);
                         
                         const promise = fetch('/api/directions', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 origin: userLocation,
                                 destination: userLocation,
                                 waypoints: waypoints,
                                 avoidHighways: avoidHighways,
-                                optimizeWaypoints: false // 一筆書きのため順序を固定
+                                optimizeWaypoints: false
                             })
                         })
                         .then(response => response.json())
@@ -952,21 +1466,13 @@
                     const routes = await Promise.all(routePromises);
                     const validRoutes = routes.filter(route => route !== null);
 
-                    console.log(`${validRoutes.length}個のルートが生成されました`);
-
-                    // 重複度をチェックして、一筆書きに近いルートを選択
                     const scoredRoutes = validRoutes.map(route => {
                         const score = calculateRouteOverlapScore(route);
                         return { route, score };
                     });
 
-                    // スコアが低い（重複が少ない）順にソート
                     scoredRoutes.sort((a, b) => a.score - b.score);
-
-                    // 上位3つを選択
                     allRoutes = scoredRoutes.slice(0, 3).map(sr => sr.route);
-
-                    console.log('重複スコア:', scoredRoutes.slice(0, 3).map(sr => sr.score));
 
                     if (allRoutes.length > 0) {
                         displayRoute(0);
@@ -979,34 +1485,23 @@
                         alert('ルート作成に失敗しました');
                     }
                 } else {
-                    // 片道モード
                     const directDistance = calculateDistance(userLocation, selectedDestination);
                     const detourDistance = targetDistance - directDistance;
-                    
-                    console.log(`=== 片道モード ===`);
-                    console.log(`目標歩数: ${currentSteps}歩`);
-                    console.log(`目標距離: ${targetDistance.toFixed(2)}km`);
-                    console.log(`直線距離: ${directDistance.toFixed(2)}km (${Math.round((directDistance / 0.7) * 1000)}歩)`);
-                    console.log(`必要な寄り道: ${detourDistance.toFixed(2)}km (${Math.round((detourDistance / 0.7) * 1000)}歩)`);
                     
                     let waypoints = [];
                     if (detourDistance > 0) {
                         waypoints = generateDetourWaypoints(userLocation, selectedDestination, detourDistance);
-                    } else {
-                        console.log('直線距離の方が長いため、最短ルートを使用');
                     }
                     
                     const response = await fetch('/api/directions', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             origin: userLocation,
                             destination: selectedDestination,
                             waypoints: waypoints,
                             avoidHighways: avoidHighways,
-                            optimizeWaypoints: false // 順序を固定
+                            optimizeWaypoints: false
                         })
                     });
 
@@ -1014,16 +1509,6 @@
 
                     if (data.status === 'OK' && data.routes && data.routes.length > 0) {
                         allRoutes = [data.routes[0]];
-                        
-                        // 実際のルート距離を表示
-                        let actualDistance = 0;
-                        data.routes[0].legs.forEach(leg => {
-                            actualDistance += leg.distance.value;
-                        });
-                        const actualSteps = Math.round((actualDistance / 1000) / 0.7 * 1000);
-                        console.log(`実際のルート距離: ${(actualDistance / 1000).toFixed(2)}km (${actualSteps}歩)`);
-                        console.log(`精度: ${((actualSteps / currentSteps) * 100).toFixed(1)}%`);
-                        
                         displayRoute(0);
                         document.getElementById('routeSwitch').classList.add('hidden');
                     } else {
@@ -1038,11 +1523,8 @@
             }
         }
 
-        // ルートの重複度を計算（低いほど一筆書きに近い）
         function calculateRouteOverlapScore(route) {
             const path = google.maps.geometry.encoding.decodePath(route.overview_polyline.points);
-            
-            // 各セグメントをハッシュ化して重複をカウント
             const segmentSet = new Map();
             let overlapCount = 0;
             
@@ -1050,7 +1532,6 @@
                 const p1 = path[i];
                 const p2 = path[i + 1];
                 
-                // セグメントを正規化（方向に関係なく同じキーになるように）
                 const key1 = `${p1.lat().toFixed(5)},${p1.lng().toFixed(5)}`;
                 const key2 = `${p2.lat().toFixed(5)},${p2.lng().toFixed(5)}`;
                 const segmentKey = key1 < key2 ? `${key1}-${key2}` : `${key2}-${key1}`;
@@ -1063,87 +1544,42 @@
                 }
             }
             
-            // 重複率を計算
             const totalSegments = path.length - 1;
-            const overlapScore = totalSegments > 0 ? overlapCount / totalSegments : 0;
-            
-            console.log(`重複セグメント: ${overlapCount}/${totalSegments} (${(overlapScore * 100).toFixed(1)}%)`);
-            
-            return overlapScore;
+            return totalSegments > 0 ? overlapCount / totalSegments : 0;
         }
 
-        // 寄り道ウェイポイントを生成（片道モード用）
         function generateDetourWaypoints(origin, destination, detourDistanceKm) {
             const waypoints = [];
             
-            console.log(`=== 寄り道計算 ===`);
-            console.log(`必要な寄り道距離: ${detourDistanceKm.toFixed(2)}km`);
-            
-            // 寄り道距離に応じてウェイポイント数を決定
             let numWaypoints;
-            if (detourDistanceKm < 1.0) {
-                numWaypoints = 2;
-            } else if (detourDistanceKm < 2.0) {
-                numWaypoints = 3;
-            } else if (detourDistanceKm < 3.5) {
-                numWaypoints = 4;
-            } else if (detourDistanceKm < 5.0) {
-                numWaypoints = 5;
-            } else {
-                numWaypoints = 6;
-            }
+            if (detourDistanceKm < 1.0) numWaypoints = 2;
+            else if (detourDistanceKm < 2.0) numWaypoints = 3;
+            else if (detourDistanceKm < 3.5) numWaypoints = 4;
+            else if (detourDistanceKm < 5.0) numWaypoints = 5;
+            else numWaypoints = 6;
             
-            console.log(`ウェイポイント数: ${numWaypoints}`);
-            
-            // 現在地→目的地の直線距離
-            const directDistance = calculateDistance(origin, destination);
-            
-            // 寄り道の半径（周回モードと同じくらいに調整: 2.5 → 7.0）
             const radiusKm = detourDistanceKm / 2.0;
-            console.log(`寄り道半径: ${radiusKm.toFixed(2)}km`);
-            
-            // 進行方向の角度を計算
             const mainAngle = Math.atan2(destination.lng - origin.lng, destination.lat - origin.lat);
-            
-            // 左右どちらに寄り道するかランダムで決定
             const side = Math.random() > 0.5 ? 1 : -1;
-            console.log(`寄り道方向: ${side > 0 ? '右' : '左'}`);
             
-            // 中間地点を基準点とする
-            const midLat = (origin.lat + destination.lat) / 2;
-            const midLng = (origin.lng + destination.lng) / 2;
-            
-            // ウェイポイントを生成
             for (let i = 0; i < numWaypoints; i++) {
-                // 進行方向に沿った位置（0.15～0.85の範囲で配置）
                 const progress = 0.15 + (i / (numWaypoints - 1)) * 0.7;
-                
-                // ベース位置（現在地→目的地のライン上）
                 const baseLat = origin.lat + (destination.lat - origin.lat) * progress;
                 const baseLng = origin.lng + (destination.lng - origin.lng) * progress;
                 
-                // 垂直方向への寄り道距離（中央が最大、山なりの形）
                 const detourFactor = Math.sin(Math.PI * (i + 1) / (numWaypoints + 1));
                 const perpDistance = radiusKm * detourFactor * side;
-                
-                console.log(`経由地${i + 1}: progress=${progress.toFixed(2)}, detourFactor=${detourFactor.toFixed(2)}, perpDistance=${perpDistance.toFixed(2)}km`);
-                
-                // 垂直方向の角度
                 const perpAngle = mainAngle + Math.PI / 2;
                 
-                // 最終的な座標
                 const lat = baseLat + (perpDistance / 111) * Math.cos(perpAngle);
                 const lng = baseLng + (perpDistance / (111 * Math.cos(baseLat * Math.PI / 180))) * Math.sin(perpAngle);
                 
                 waypoints.push({ lat, lng });
             }
             
-            console.log(`生成したウェイポイント:`, waypoints);
-            
             return waypoints;
         }
 
-        // ルートを表示する関数
         function displayRoute(routeIndex) {
             if (currentPolyline) {
                 currentPolyline.setMap(null);
@@ -1175,7 +1611,7 @@
                 totalDuration += leg.duration.value;
             });
 
-            totalRouteDistance = totalDistance; // ナビ用に保存
+            totalRouteDistance = totalDistance;
 
             const distanceKm = (totalDistance / 1000).toFixed(1);
             const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
@@ -1188,7 +1624,6 @@
             document.getElementById('routeInfo').classList.remove('hidden');
         }
 
-        // ルート選択ボタンを表示する関数（地図の下に簡易版）
         function showRouteSelection() {
             const routeSwitchContainer = document.getElementById('routeSwitchButtons');
             routeSwitchContainer.innerHTML = '';
@@ -1238,19 +1673,14 @@
             
             const numWaypoints = 4;
             const radiusKm = targetDistanceKm / 7.45;
-            
             const minDistanceBetweenWaypoints = radiusKm * 1.0;
-            
-            // 開始角度をランダムに決定
             const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
 
             let attempts = 0;
             const maxAttempts = 50;
 
-            // 時計回りに順序付けられたウェイポイントを生成
             while (waypoints.length < numWaypoints && attempts < maxAttempts) {
                 const i = waypoints.length;
-                // 時計回りに均等に配置
                 const baseAngle = (Math.PI * 2 / numWaypoints) * i;
                 const randomOffset = (Math.random() - 0.5) * 0.15;
                 const angle = startAngle + baseAngle + randomOffset;
@@ -1278,7 +1708,6 @@
             }
 
             if (waypoints.length < numWaypoints) {
-                console.log('最小距離制約を緩めて再生成');
                 return generateWaypointsSimple(center, targetDistanceKm, seed);
             }
 
@@ -1350,7 +1779,6 @@
         // ========================================
         // ナビゲーション機能
         // ========================================
-
         function startNavigation() {
             if (!currentRoute) {
                 alert('ルートを先に作成してください');
@@ -1366,10 +1794,8 @@
             followMode = true;
             startPosition = { ...userLocation };
 
-            // UIの切り替え
             enterNavigationMode();
 
-            // 位置情報の追跡開始
             watchId = navigator.geolocation.watchPosition(
                 updateCurrentPosition,
                 handlePositionError,
@@ -1392,7 +1818,6 @@
 
             isNavigating = false;
 
-            // マーカーを削除
             if (currentPositionMarker) {
                 currentPositionMarker.setMap(null);
                 currentPositionMarker = null;
@@ -1402,28 +1827,19 @@
                 currentPositionCircle = null;
             }
 
-            // UIを元に戻す
             exitNavigationMode();
         }
 
         function enterNavigationMode() {
-            // 設定系UIを非表示
             document.getElementById('modeSection').classList.add('hidden');
-            document.getElementById('missionSection').classList.add('hidden');
-            document.getElementById('destinationSection').classList.add('hidden');
-            document.getElementById('stepsSection').classList.add('hidden');
-            document.getElementById('routeSettingsSection').classList.add('hidden');
-            document.getElementById('createRouteBtn').classList.add('hidden');
+            document.getElementById('routeCreationSection').classList.add('hidden');
+            document.getElementById('stampRallySection').classList.add('hidden');
             document.getElementById('routeSwitch').classList.add('hidden');
             document.getElementById('routeInfo').classList.add('hidden');
 
-            // ナビパネルを表示
             document.getElementById('navModePanel').classList.remove('hidden');
-
-            // 地図を大きく
             document.getElementById('map').classList.add('nav-mode');
             
-            // 地図のリサイズをトリガー
             setTimeout(() => {
                 google.maps.event.trigger(map, 'resize');
                 if (userLocation) {
@@ -1434,24 +1850,20 @@
         }
 
         function exitNavigationMode() {
-            // 設定系UIを再表示
             document.getElementById('modeSection').classList.remove('hidden');
-            document.getElementById('missionSection').classList.remove('hidden');
-            if (currentMode === 'oneway') {
-                document.getElementById('destinationSection').classList.remove('hidden');
+            
+            if (currentMode === 'stamp') {
+                document.getElementById('stampRallySection').classList.remove('hidden');
+            } else {
+                document.getElementById('routeCreationSection').classList.remove('hidden');
             }
-            document.getElementById('stepsSection').classList.remove('hidden');
-            document.getElementById('routeSettingsSection').classList.remove('hidden');
-            document.getElementById('createRouteBtn').classList.remove('hidden');
+            
             if (allRoutes.length > 1) {
                 document.getElementById('routeSwitch').classList.remove('hidden');
             }
             document.getElementById('routeInfo').classList.remove('hidden');
 
-            // ナビパネルを非表示
             document.getElementById('navModePanel').classList.add('hidden');
-
-            // 地図のサイズを元に戻す
             document.getElementById('map').classList.remove('nav-mode');
             
             setTimeout(() => {
@@ -1465,11 +1877,9 @@
                 lng: position.coords.longitude
             };
 
-            // マーカーの更新または作成
             if (currentPositionMarker) {
                 currentPositionMarker.setPosition(currentPos);
             } else {
-                // 現在位置マーカー（中央の青い点）
                 currentPositionMarker = new google.maps.Marker({
                     position: currentPos,
                     map: map,
@@ -1485,7 +1895,6 @@
                 });
             }
 
-            // パルスサークルの更新または作成
             if (currentPositionCircle) {
                 currentPositionCircle.setCenter(currentPos);
             } else {
@@ -1502,12 +1911,10 @@
                 });
             }
 
-            // 追従モードの場合、地図の中心を移動
             if (followMode) {
                 map.panTo(currentPos);
             }
 
-            // 距離の計算と表示更新
             updateNavigationStats(currentPos);
         }
 
@@ -1518,11 +1925,9 @@
         }
 
         function updateNavigationStats(currentPos) {
-            // スタート地点からの距離（歩いた距離の概算）
             const walkedDistance = calculateDistance(startPosition, currentPos);
             document.getElementById('navWalkedDistance').textContent = walkedDistance.toFixed(2);
 
-            // 残り距離（概算）
             const remainingDistance = Math.max(0, (totalRouteDistance / 1000) - walkedDistance);
             document.getElementById('navRemainingDistance').textContent = remainingDistance.toFixed(2);
         }
