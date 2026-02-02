@@ -7,81 +7,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map { height: 500px; width: 100%; }
-        @media (max-width: 640px) {
-            #map { height: 400px; }
-        }
-        
-        /* Places Autocomplete用のスタイル */
-        .pac-container {
-            z-index: 10000;
-            font-family: inherit;
-            border-radius: 0.5rem;
-            margin-top: 0.25rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .pac-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            border-top: 1px solid #e5e7eb;
-        }
-        
-        .pac-item:hover {
-            background-color: #f3f4f6;
-        }
-        
-        .pac-item-query {
-            font-weight: 600;
-            color: #1f2937;
-        }
-        
-        .pac-icon {
-            display: none;
-        }
-
-        /* ナビモード用のパルスアニメーション */
-        @keyframes pulse-ring {
-            0% {
-                transform: scale(0.8);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(2);
-                opacity: 0;
-            }
-        }
-        
-        .nav-pulse {
-            animation: pulse-ring 1.5s ease-out infinite;
-        }
-
-        /* ナビモード時の地図を大きく */
-        #map.nav-mode {
-            height: 70vh;
-            min-height: 400px;
-        }
-
-        /* スタンプラリー用スタイル */
-        .stamp-card {
-            transition: all 0.2s;
-        }
-        .stamp-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .stamp-visited {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            border-color: #10b981;
-        }
-        .stamp-unvisited {
-            background: white;
-            border-color: #e5e7eb;
-        }
-        .category-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-color: transparent;
-        }
+        @media (max-width: 640px) { #map { height: 400px; } }
+        .pac-container { z-index: 10000; font-family: inherit; border-radius: 0.5rem; margin-top: 0.25rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .pac-item { padding: 0.75rem 1rem; cursor: pointer; border-top: 1px solid #e5e7eb; }
+        .pac-item:hover { background-color: #f3f4f6; }
+        .pac-item-query { font-weight: 600; color: #1f2937; }
+        .pac-icon { display: none; }
+        @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+        .nav-pulse { animation: pulse-ring 1.5s ease-out infinite; }
+        #map.nav-mode { height: 70vh; min-height: 400px; }
+        .stamp-card { transition: all 0.2s; }
+        .stamp-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .stamp-visited { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #10b981; }
+        .stamp-unvisited { background: white; border-color: #e5e7eb; }
+        .category-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
@@ -98,7 +37,6 @@
                 <h1 class="text-3xl font-bold mb-2">お散歩ルート作成</h1>
                 <p class="text-gray-500">散歩コースを作成しましょう</p>
             </div>
-            
             <button onclick="getLocation()" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl hover:bg-green-600 transition-colors">
                 📍 現在地を使う
             </button>
@@ -110,13 +48,11 @@
         
         <!-- ヘッダー -->
         <div class="bg-white rounded-2xl shadow-lg p-6">
-            <div>
-                <h1 class="text-2xl font-bold">お散歩ルート作成</h1>
-                <p class="text-sm text-gray-500">Google Maps版</p>
-            </div>
+            <h1 class="text-2xl font-bold">お散歩ルート作成</h1>
+            <p class="text-sm text-gray-500">Google Maps版</p>
         </div>
 
-        <!-- モード選択（3モード） -->
+        <!-- モード選択 -->
         <div id="modeSection" class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="font-medium mb-3">モード選択</h2>
             <div class="grid grid-cols-3 gap-3">
@@ -138,7 +74,7 @@
             </div>
         </div>
 
-        <!-- ========== ルート作成セクション（周回・片道モード用） ========== -->
+        <!-- ルート作成セクション -->
         <div id="routeCreationSection">
             <!-- ミッション -->
             <div id="missionSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
@@ -146,15 +82,12 @@
                 <button onclick="showRandomMission()" class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold hover:shadow-xl transition-all text-lg">
                     🎯 ミッションを見る
                 </button>
-                
                 <div id="missionDisplay" class="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl hidden">
                     <div class="text-center">
                         <div id="missionEmoji" class="text-5xl mb-3">🪜</div>
-                        <div id="missionText" class="text-lg font-bold text-gray-800 mb-2">意味のない階段を見つけよう</div>
-                        <div id="missionHint" class="text-sm text-gray-600 mb-4">どこにも行かない純粋階段を探してみよう</div>
-                        <button onclick="showRandomMission()" class="px-4 py-2 bg-white rounded-lg text-purple-600 font-medium hover:bg-purple-50 transition-all">
-                            🔄 別のミッションを見る
-                        </button>
+                        <div id="missionText" class="text-lg font-bold text-gray-800 mb-2"></div>
+                        <div id="missionHint" class="text-sm text-gray-600 mb-4"></div>
+                        <button onclick="showRandomMission()" class="px-4 py-2 bg-white rounded-lg text-purple-600 font-medium hover:bg-purple-50 transition-all">🔄 別のミッション</button>
                     </div>
                 </div>
             </div>
@@ -162,22 +95,14 @@
             <!-- 片道モード: 目的地選択 -->
             <div id="destinationSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
                 <h2 class="font-medium mb-3">📍 目的地</h2>
-                
-                <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mb-4 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">
-                    🗺️ 地図から選択（おすすめ）
-                </button>
-                
+                <button onclick="selectFromMap()" id="mapSelectBtn" class="w-full mb-4 py-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-lg">🗺️ 地図から選択</button>
                 <div class="mb-3">
                     <div class="text-sm font-medium text-gray-600 mb-2">登録済みの目的地:</div>
                     <div id="savedDestinations" class="space-y-2"></div>
                 </div>
-                
-                <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all text-sm">
-                    ＋ または住所で追加
-                </button>
-                
+                <button onclick="showAddDestination()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-green-500 hover:text-green-600 transition-all text-sm">＋ 住所で追加</button>
                 <div id="selectedDestinationDisplay" class="mt-4 p-3 bg-blue-50 rounded-lg hidden">
-                    <div class="text-sm text-gray-600">選択中の目的地:</div>
+                    <div class="text-sm text-gray-600">選択中:</div>
                     <div id="selectedDestinationName" class="font-bold text-lg"></div>
                     <div id="selectedDestinationDistance" class="text-sm text-gray-600 mt-1"></div>
                 </div>
@@ -187,15 +112,12 @@
             <div id="stepsSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 class="font-medium mb-3">目標歩数</h2>
                 <div class="flex items-center gap-4">
-                    <input type="range" id="stepsRange" min="1000" max="20000" step="500" value="5000" 
-                        class="flex-1 h-2 bg-gray-200 rounded-lg cursor-pointer accent-green-500"
-                        oninput="updateSteps(this.value)">
+                    <input type="range" id="stepsRange" min="1000" max="20000" step="500" value="5000" class="flex-1 h-2 bg-gray-200 rounded-lg cursor-pointer accent-green-500" oninput="updateSteps(this.value)">
                     <div class="text-right min-w-32">
                         <div id="stepsDisplay" class="text-3xl font-bold text-green-600">5,000</div>
                         <div id="distanceDisplay" class="text-sm text-gray-500">歩 (3.5km)</div>
                     </div>
                 </div>
-                
                 <div class="flex gap-2 mt-4">
                     <button onclick="setSteps(3000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">3千歩</button>
                     <button onclick="setSteps(5000)" class="flex-1 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">5千歩</button>
@@ -204,7 +126,7 @@
             </div>
 
             <!-- ルート設定 -->
-            <div id="routeSettingsSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 class="font-medium mb-3">ルート設定</h2>
                 <label class="flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" id="avoidHighways" checked class="w-5 h-5 accent-green-500">
@@ -218,55 +140,38 @@
             </button>
         </div>
 
-        <!-- ========== スタンプラリーセクション ========== -->
+        <!-- スタンプラリーセクション -->
         <div id="stampRallySection" class="hidden">
             <!-- カテゴリ選択 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 class="font-medium mb-3">カテゴリ</h2>
                 <div class="flex flex-wrap gap-2" id="categoryButtons">
-                    <button onclick="filterByCategory('all')" class="category-btn active px-4 py-2 rounded-full border-2 transition-all text-sm font-medium">
-                        🎯 すべて
-                    </button>
-                    <button onclick="filterByCategory('temples')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">
-                        ⛩️ 神社仏閣
-                    </button>
-                    <button onclick="filterByCategory('public')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">
-                        🏛️ 公共施設
-                    </button>
+                    <button onclick="filterByCategory('all')" class="category-btn active px-4 py-2 rounded-full border-2 transition-all text-sm font-medium">🎯 すべて</button>
+                    <button onclick="filterByCategory('temples')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">⛩️ 神社仏閣</button>
+                    <button onclick="filterByCategory('public')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🏛️ 公共施設</button>
                 </div>
             </div>
 
             <!-- スタンプラリー一覧 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 class="font-medium mb-3">スタンプラリー</h2>
-                <div id="rallyList" class="space-y-3">
-                    <!-- 動的に生成 -->
-                </div>
+                <div id="rallyList" class="space-y-3"></div>
             </div>
 
-            <!-- スタンプラリー詳細（スポット一覧） -->
+            <!-- スタンプラリー詳細 -->
             <div id="rallyDetailSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
                 <div class="flex items-center justify-between mb-4">
-                    <button onclick="closeRallyDetail()" class="text-gray-500 hover:text-gray-700">
-                        ← 戻る
-                    </button>
+                    <button onclick="closeRallyDetail()" class="text-gray-500 hover:text-gray-700">← 戻る</button>
                     <div id="rallyProgress" class="text-sm font-medium text-green-600"></div>
                 </div>
                 <h2 id="rallyDetailTitle" class="text-xl font-bold mb-2"></h2>
                 <p id="rallyDetailDesc" class="text-sm text-gray-600 mb-4"></p>
-                
-                <!-- 並び替え -->
                 <div class="flex gap-2 mb-4">
                     <button onclick="sortSpots('default')" class="sort-btn active px-3 py-1 text-sm rounded-lg bg-gray-100">番号順</button>
                     <button onclick="sortSpots('distance')" class="sort-btn px-3 py-1 text-sm rounded-lg bg-gray-100">距離順</button>
                     <button onclick="sortSpots('unvisited')" class="sort-btn px-3 py-1 text-sm rounded-lg bg-gray-100">未訪問優先</button>
                 </div>
-                
-                <div id="spotList" class="space-y-3">
-                    <!-- 動的に生成 -->
-                </div>
-                
-                <!-- 近くの未訪問スポットへルート作成 -->
+                <div id="spotList" class="space-y-3"></div>
                 <button onclick="createRouteToNearestSpot()" class="w-full mt-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-xl transition-all">
                     🚶 近くの未訪問スポットへルート作成
                 </button>
@@ -277,8 +182,6 @@
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="text-lg font-bold mb-4">📍 地図</h2>
             <div id="map" class="rounded-xl border-2 border-gray-200"></div>
-            
-            <!-- ルート切り替えボタン -->
             <div id="routeSwitch" class="mt-4 hidden">
                 <div class="text-sm font-medium text-gray-600 mb-2">ルートを選択:</div>
                 <div id="routeSwitchButtons" class="flex gap-2"></div>
@@ -288,7 +191,6 @@
         <!-- ルート情報 -->
         <div id="routeInfo" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <h2 class="text-lg font-bold mb-4">📊 ルート情報</h2>
-            
             <div class="grid grid-cols-3 gap-4 mb-4">
                 <div class="bg-green-50 p-4 rounded-xl text-center">
                     <div id="routeDistance" class="text-2xl font-bold text-green-600">0</div>
@@ -303,25 +205,16 @@
                     <div class="text-sm text-gray-600">分</div>
                 </div>
             </div>
-
-            <button id="startNavBtn" onclick="startNavigation()" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-xl hover:shadow-xl transition-all mb-3">
-                🧭 このアプリでナビ開始
-            </button>
-
-            <button id="openInGoogleMaps" onclick="openInGoogleMaps()" class="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors">
-                📱 Googleマップで開く
-            </button>
+            <button onclick="startNavigation()" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-xl hover:shadow-xl transition-all mb-3">🧭 ナビ開始</button>
+            <button onclick="openInGoogleMaps()" class="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors">📱 Googleマップで開く</button>
         </div>
 
-        <!-- ナビモード表示 -->
+        <!-- ナビモード -->
         <div id="navModePanel" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold">🧭 ナビゲーション中</h2>
-                <div id="navStatus" class="text-sm text-green-600 font-medium">
-                    📍 位置情報取得中...
-                </div>
+                <div id="navStatus" class="text-sm text-green-600 font-medium">📍 位置情報取得中...</div>
             </div>
-            
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div class="bg-blue-50 p-4 rounded-xl text-center">
                     <div id="navWalkedDistance" class="text-2xl font-bold text-blue-600">0</div>
@@ -332,77 +225,57 @@
                     <div class="text-sm text-gray-600">残り (km)</div>
                 </div>
             </div>
-
             <div class="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-xl">
                 <span class="font-medium">地図の自動追従</span>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="followModeToggle" checked class="sr-only peer" onchange="toggleFollowMode()">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                 </label>
             </div>
-            
-            <button onclick="stopNavigation()" class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors">
-                ⏹️ ナビを終了
-            </button>
+            <button onclick="stopNavigation()" class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors">⏹️ ナビを終了</button>
         </div>
-
     </div>
 
-    <!-- 目的地追加モーダル -->
+    <!-- モーダル類 -->
     <div id="addDestinationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full">
             <h2 class="text-xl font-bold mb-4">新しい目的地を追加</h2>
-            
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">名前（保存する場合のみ必要）</label>
-                    <input type="text" id="destName" placeholder="例: 自宅、職場、カフェ" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">名前</label>
+                    <input type="text" id="destName" placeholder="例: 自宅、職場" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
                 </div>
-                
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">住所（施設名でもOK）</label>
-                    <input type="text" id="destAddress" placeholder="例: 大阪城公園、梅田駅、道頓堀" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
-                    <p class="mt-2 text-xs text-gray-500">💡 入力すると候補が表示されます</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">住所・施設名</label>
+                    <input type="text" id="destAddress" placeholder="例: 大阪城公園" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 outline-none">
                 </div>
             </div>
-            
             <div class="space-y-3 mt-6">
-                <button onclick="useDestinationNow()" class="w-full py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all font-bold">
-                    🚀 登録せずにすぐ使う
-                </button>
+                <button onclick="useDestinationNow()" class="w-full py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 font-bold">🚀 すぐ使う</button>
                 <div class="flex gap-3">
-                    <button onclick="closeAddDestination()" class="flex-1 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
-                        キャンセル
-                    </button>
-                    <button onclick="saveDestination()" class="flex-1 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
-                        💾 保存して使う
-                    </button>
+                    <button onclick="closeAddDestination()" class="flex-1 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50">キャンセル</button>
+                    <button onclick="saveDestination()" class="flex-1 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600">💾 保存</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- チェックインモーダル -->
     <div id="checkinModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div id="checkinContent" class="text-center">
-                <!-- 動的に生成 -->
-            </div>
+            <div id="checkinContent" class="text-center"></div>
         </div>
     </div>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry,places"></script>
     <script>
-        // ========================================
         // グローバル変数
-        // ========================================
         let map = null;
         let userLocation = null;
         let currentSteps = 5000;
         let currentRoute = null;
         let currentPolyline = null;
         let allRoutes = [];
-        let currentMode = 'loop'; // 'loop', 'oneway', 'stamp'
+        let currentMode = 'loop';
         let selectedDestination = null;
         let destinationMarker = null;
         let isSelectingFromMap = false;
@@ -410,7 +283,6 @@
         let autocomplete = null;
         let autocompletePlace = null;
 
-        // ナビモード用
         let isNavigating = false;
         let watchId = null;
         let currentPositionMarker = null;
@@ -420,172 +292,50 @@
         let totalRouteDistance = 0;
 
         // スタンプラリー用
+        let stampRallies = {};
         let currentRallyKey = null;
         let currentSortMode = 'default';
         let stampMarkers = [];
 
-        // ========================================
-        // スタンプラリーデータ
-        // ========================================
-        const stampRallies = {
-            // 神社仏閣系
-            shichifukujin: {
-                name: "大阪七福神巡り",
-                icon: "⛩️",
-                category: "temples",
-                description: "江戸時代から続く福を招く七福神巡り",
-                spots: [
-                    { id: 1, name: "三光神社", detail: "寿老神", address: "天王寺区玉造本町14-90", lat: 34.67361, lng: 135.52833, blessing: "長寿・幸福" },
-                    { id: 2, name: "長久寺", detail: "福禄寿", address: "中央区谷町8-2-49", lat: 34.67028, lng: 135.51611, blessing: "幸福・財産・長寿" },
-                    { id: 3, name: "法案寺", detail: "弁財天", address: "中央区島之内2-10-14", lat: 34.66750, lng: 135.50667, blessing: "芸能・財運" },
-                    { id: 4, name: "大乗坊", detail: "毘沙門天", address: "浪速区日本橋3-6-13", lat: 34.65833, lng: 135.50583, blessing: "勝運・厄除け" },
-                    { id: 5, name: "大国主神社", detail: "大黒天", address: "浪速区敷津西1-2-12", lat: 34.65444, lng: 135.49944, blessing: "金運・商売繁盛" },
-                    { id: 6, name: "今宮戎神社", detail: "恵比寿", address: "浪速区恵美須西1-6-10", lat: 34.65222, lng: 135.50556, blessing: "商売繁盛" },
-                    { id: 7, name: "四天王寺 布袋堂", detail: "布袋尊", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "笑門来福" }
-                ]
-            },
-            naniwashichiko: {
-                name: "なにわ七幸めぐり",
-                icon: "🙏",
-                category: "temples",
-                description: "大阪を代表する7社寺で七つの幸せを",
-                spots: [
-                    { id: 1, name: "大阪天満宮", detail: "学業成就", address: "北区天神橋2-1-8", lat: 34.69472, lng: 135.51361, blessing: "学問・受験合格" },
-                    { id: 2, name: "住吉大社", detail: "厄除祈願", address: "住吉区住吉2-9-89", lat: 34.61278, lng: 135.49278, blessing: "厄除け・開運" },
-                    { id: 3, name: "四條畷神社", detail: "心願成就", address: "四条畷市南野2-18-1", lat: 34.73889, lng: 135.63889, blessing: "願い事成就" },
-                    { id: 4, name: "大念佛寺", detail: "諸芸上達", address: "平野区平野上町1-7-26", lat: 34.62639, lng: 135.55194, blessing: "芸能・技術向上" },
-                    { id: 5, name: "太融寺", detail: "無病息災", address: "北区太融寺町3-7", lat: 34.70333, lng: 135.50389, blessing: "健康・病気平癒" },
-                    { id: 6, name: "今宮戎神社", detail: "商売繁盛", address: "浪速区恵美須西1-6-10", lat: 34.65222, lng: 135.50556, blessing: "商売繁盛" },
-                    { id: 7, name: "四天王寺", detail: "家内安全", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "家族の幸福" }
-                ]
-            },
-            shotokutaishi: {
-                name: "聖徳太子ゆかりの寺",
-                icon: "🌸",
-                category: "temples",
-                description: "河内三太子と日本最古の官寺",
-                spots: [
-                    { id: 1, name: "四天王寺", detail: "日本仏法最初の官寺", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "593年創建" },
-                    { id: 2, name: "叡福寺（上の太子）", detail: "聖徳太子御廟", address: "南河内郡太子町太子2146", lat: 34.51722, lng: 135.64639, blessing: "太子の墓所" },
-                    { id: 3, name: "野中寺（中の太子）", detail: "飛鳥時代創建", address: "羽曳野市野々上5-9-24", lat: 34.55361, lng: 135.59917, blessing: "弥勒菩薩像" },
-                    { id: 4, name: "大聖勝軍寺（下の太子）", detail: "物部守屋討伐の地", address: "八尾市太子堂3-3-16", lat: 34.62278, lng: 135.59889, blessing: "戦勝祈願" }
-                ]
-            },
-            joyanokane: {
-                name: "除夜の鐘巡り（大阪市内）",
-                icon: "🔔",
-                category: "temples",
-                description: "大晦日に鐘をつける寺院（8ヶ所）",
-                spots: [
-                    { id: 1, name: "四天王寺", detail: "北鐘堂・南鐘堂・鼓楼", address: "天王寺区四天王寺1-11-18", lat: 34.65361, lng: 135.51639, blessing: "先着108名×3ヶ所" },
-                    { id: 2, name: "一心寺", detail: "文治元年開基", address: "天王寺区逢阪2-8-69", lat: 34.65194, lng: 135.50889, blessing: "当日先着順" },
-                    { id: 3, name: "大念佛寺", detail: "日本最初の念仏道場", address: "平野区平野上町1-7-26", lat: 34.62639, lng: 135.55194, blessing: "108組限定" },
-                    { id: 4, name: "恵浄寺", detail: "平野区の古刹", address: "平野区平野市町3-9-17", lat: 34.62500, lng: 135.55833, blessing: "制限なし" },
-                    { id: 5, name: "法性寺", detail: "400年以上の歴史", address: "中央区中寺1-1-32", lat: 34.66722, lng: 135.51500, blessing: "自由参加" },
-                    { id: 6, name: "北御堂", detail: "御堂筋の由来", address: "中央区本町4-1-3", lat: 34.68361, lng: 135.50028, blessing: "先着500名" },
-                    { id: 7, name: "南御堂", detail: "御堂筋の由来", address: "中央区久太郎町4-1-11", lat: 34.68028, lng: 135.50222, blessing: "22時開始" },
-                    { id: 8, name: "太融寺", detail: "弘法大師創建", address: "北区太融寺町3-7", lat: 34.70333, lng: 135.50389, blessing: "0時まで制限なし" }
-                ]
-            },
-            // 公共施設系
-            libraries: {
-                name: "大阪市立図書館",
-                icon: "📚",
-                category: "public",
-                description: "大阪市立図書館24館を巡る",
-                spots: [
-                    { id: 1, name: "中央図書館", address: "西区北堀江4-3-2", lat: 34.67222, lng: 135.48361 },
-                    { id: 2, name: "北図書館", address: "北区本庄東3-2-2", lat: 34.71194, lng: 135.51583 },
-                    { id: 3, name: "都島図書館", address: "都島区中野町2-16-25", lat: 34.70750, lng: 135.53028 },
-                    { id: 4, name: "福島図書館", address: "福島区吉野3-17-23", lat: 34.69444, lng: 135.47028 },
-                    { id: 5, name: "此花図書館", address: "此花区四貫島1-1-18", lat: 34.68250, lng: 135.45111 },
-                    { id: 6, name: "島之内図書館", address: "中央区島之内1-10-13", lat: 34.67139, lng: 135.50583 },
-                    { id: 7, name: "港図書館", address: "港区弁天2-1-5", lat: 34.66611, lng: 135.46083 },
-                    { id: 8, name: "大正図書館", address: "大正区千島3-6-15", lat: 34.64750, lng: 135.47111 },
-                    { id: 9, name: "天王寺図書館", address: "天王寺区上之宮町4-47", lat: 34.66139, lng: 135.52139 },
-                    { id: 10, name: "浪速図書館", address: "浪速区敷津西1-5-23", lat: 34.65417, lng: 135.49833 },
-                    { id: 11, name: "西淀川図書館", address: "西淀川区御幣島1-2-10", lat: 34.71139, lng: 135.45194 },
-                    { id: 12, name: "淀川図書館", address: "淀川区新高3-9-36", lat: 34.73361, lng: 135.48083 },
-                    { id: 13, name: "東淀川図書館", address: "東淀川区東中島1-13-21", lat: 34.73389, lng: 135.52139 },
-                    { id: 14, name: "東成図書館", address: "東成区大今里西3-2-17", lat: 34.67028, lng: 135.54500 },
-                    { id: 15, name: "生野図書館", address: "生野区勝山南3-14-23", lat: 34.64861, lng: 135.53972 },
-                    { id: 16, name: "旭図書館", address: "旭区中宮1-11-14", lat: 34.72556, lng: 135.54139 },
-                    { id: 17, name: "城東図書館", address: "城東区中浜2-8-28", lat: 34.69861, lng: 135.55806 },
-                    { id: 18, name: "鶴見図書館", address: "鶴見区横堤5-3-28", lat: 34.70917, lng: 135.58222 },
-                    { id: 19, name: "阿倍野図書館", address: "阿倍野区阿倍野筋4-19-118", lat: 34.63222, lng: 135.51444 },
-                    { id: 20, name: "住之江図書館", address: "住之江区粉浜1-1-36", lat: 34.61000, lng: 135.48694 },
-                    { id: 21, name: "住吉図書館", address: "住吉区南住吉1-8-26", lat: 34.60528, lng: 135.50500 },
-                    { id: 22, name: "東住吉図書館", address: "東住吉区東田辺2-11-28", lat: 34.61611, lng: 135.52222 },
-                    { id: 23, name: "平野図書館", address: "平野区平野東2-2-95", lat: 34.62139, lng: 135.56917 },
-                    { id: 24, name: "西成図書館", address: "西成区岸里東1-3-16", lat: 34.63806, lng: 135.49889 }
-                ]
-            },
-            kuyakusho: {
-                name: "大阪24区役所",
-                icon: "🏛️",
-                category: "public",
-                description: "大阪市24区の区役所を巡る",
-                spots: [
-                    { id: 1, name: "北区役所", address: "北区扇町2-1-27", lat: 34.70333, lng: 135.51111 },
-                    { id: 2, name: "都島区役所", address: "都島区中野町2-16-20", lat: 34.70750, lng: 135.52972 },
-                    { id: 3, name: "福島区役所", address: "福島区大開1-8-1", lat: 34.69111, lng: 135.47167 },
-                    { id: 4, name: "此花区役所", address: "此花区春日出北1-8-4", lat: 34.68056, lng: 135.45000 },
-                    { id: 5, name: "中央区役所", address: "中央区久太郎町1-2-27", lat: 34.68028, lng: 135.51583 },
-                    { id: 6, name: "西区役所", address: "西区新町4-5-14", lat: 34.67528, lng: 135.48639 },
-                    { id: 7, name: "港区役所", address: "港区市岡1-15-25", lat: 34.66583, lng: 135.46667 },
-                    { id: 8, name: "大正区役所", address: "大正区千島3-18-21", lat: 34.64694, lng: 135.47278 },
-                    { id: 9, name: "天王寺区役所", address: "天王寺区真法院町20-33", lat: 34.65806, lng: 135.52028 },
-                    { id: 10, name: "浪速区役所", address: "浪速区敷津東1-4-20", lat: 34.65472, lng: 135.50194 },
-                    { id: 11, name: "西淀川区役所", address: "西淀川区御幣島1-2-10", lat: 34.71139, lng: 135.45194 },
-                    { id: 12, name: "淀川区役所", address: "淀川区十三東2-3-3", lat: 34.72222, lng: 135.47611 },
-                    { id: 13, name: "東淀川区役所", address: "東淀川区豊新2-1-4", lat: 34.74611, lng: 135.52111 },
-                    { id: 14, name: "東成区役所", address: "東成区大今里西2-8-4", lat: 34.67111, lng: 135.54306 },
-                    { id: 15, name: "生野区役所", address: "生野区勝山南3-1-19", lat: 34.64917, lng: 135.53806 },
-                    { id: 16, name: "旭区役所", address: "旭区大宮1-1-17", lat: 34.72139, lng: 135.54028 },
-                    { id: 17, name: "城東区役所", address: "城東区中央3-5-45", lat: 34.69556, lng: 135.55583 },
-                    { id: 18, name: "鶴見区役所", address: "鶴見区横堤5-4-19", lat: 34.70944, lng: 135.58139 },
-                    { id: 19, name: "阿倍野区役所", address: "阿倍野区文の里1-1-40", lat: 34.63722, lng: 135.51917 },
-                    { id: 20, name: "住之江区役所", address: "住之江区御崎3-1-17", lat: 34.61222, lng: 135.47028 },
-                    { id: 21, name: "住吉区役所", address: "住吉区南住吉3-15-55", lat: 34.60056, lng: 135.50667 },
-                    { id: 22, name: "東住吉区役所", address: "東住吉区東田辺1-13-4", lat: 34.61889, lng: 135.52167 },
-                    { id: 23, name: "平野区役所", address: "平野区背戸口3-8-19", lat: 34.62028, lng: 135.55389 },
-                    { id: 24, name: "西成区役所", address: "西成区岸里1-5-20", lat: 34.63917, lng: 135.49944 }
-                ]
-            }
-        };
-
         // ミッションデータ
         const missions = [
-            { emoji: '🪜', text: '意味のない階段を見つけよう', hint: 'どこにも行かない純粋階段を探してみよう' },
-            { emoji: '🚪', text: '開かない扉を見つけよう', hint: '壁の中のドア、2階の宙ぶらりんドアなど' },
+            { emoji: '🪜', text: '意味のない階段を見つけよう', hint: 'どこにも行かない純粋階段' },
+            { emoji: '🚪', text: '開かない扉を見つけよう', hint: '壁の中のドア、2階の宙ぶらりんドア' },
             { emoji: '🪟', text: '塞がれた窓を見つけよう', hint: 'レンガやコンクリートで塞がれた窓枠' },
             { emoji: '🏗️', text: '工事現場を見つけよう', hint: '何ができる？半年後に来てみよう' },
             { emoji: '🏚️', text: '廃墟っぽい建物を見つけよう', hint: '時が止まった場所' },
             { emoji: '✍️', text: '手書きの看板を見つけよう', hint: '店主の人柄が出る' },
             { emoji: '🏮', text: '昭和の雰囲気の看板を見つけよう', hint: 'ホーロー看板、古い字体' },
-            { emoji: '⭕', text: '面白いマンホールを見つけよう', hint: 'デザインマンホール、ご当地柄' },
+            { emoji: '⭕', text: '面白いマンホールを見つけよう', hint: 'デザインマンホール' },
             { emoji: '🌱', text: '隙間の植物を見つけよう', hint: 'アスファルトの割れ目から' },
-            { emoji: '🐦', text: '鳥の巣を見つけよう', hint: '看板の裏、軒下など' },
-            { emoji: '🌈', text: '同じ色が3つ並んでいる場所を見つけよう', hint: '偶然の配色を楽しむ' },
             { emoji: '🔀', text: '三叉路を見つけよう', hint: 'Y字路、どっちに行く？' },
             { emoji: '⛩️', text: '見かけた神社の由来を調べよう', hint: '祀られているのは誰？' },
             { emoji: '🗿', text: '石碑の文字を読んでみよう', hint: '何が書いてある？' },
             { emoji: '👂', text: '耳を澄まして音を聞こう', hint: '鳥、水、風、街の音' }
         ];
 
-        // ========================================
         // 初期化
-        // ========================================
+        async function loadStampRallies() {
+            try {
+                const response = await fetch('/data/stamp-rallies.json');
+                stampRallies = await response.json();
+                console.log('スタンプラリーデータ読み込み完了:', Object.keys(stampRallies).length + '件');
+            } catch (error) {
+                console.error('スタンプラリーデータ読み込みエラー:', error);
+                // フォールバック: 空のオブジェクト
+                stampRallies = {};
+            }
+        }
+
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
+                    async (pos) => {
                         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        await loadStampRallies();
                         showMainScreen();
                     },
-                    (error) => {
-                        alert('位置情報取得に失敗しました。');
-                    }
+                    () => alert('位置情報取得に失敗しました')
                 );
             }
         }
@@ -595,11 +345,7 @@
             document.getElementById('mainScreen').classList.remove('hidden');
             
             setTimeout(() => {
-                map = new google.maps.Map(document.getElementById('map'), {
-                    center: userLocation,
-                    zoom: 15
-                });
-
+                map = new google.maps.Map(document.getElementById('map'), { center: userLocation, zoom: 15 });
                 geocoder = new google.maps.Geocoder();
                 initAutocomplete();
 
@@ -607,14 +353,7 @@
                     position: userLocation,
                     map: map,
                     title: '現在地',
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 8,
-                        fillColor: '#4285F4',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 2
-                    }
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
                 });
 
                 loadSavedDestinations();
@@ -622,22 +361,17 @@
             }, 100);
         }
 
-        // ========================================
         // モード切り替え
-        // ========================================
         function setMode(mode) {
             currentMode = mode;
-            
             const loopBtn = document.getElementById('loopModeBtn');
             const onewayBtn = document.getElementById('onewayModeBtn');
             const stampBtn = document.getElementById('stampModeBtn');
             
-            // ボタンスタイルリセット
             loopBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
             onewayBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all';
             stampBtn.className = 'p-4 rounded-xl border-2 border-gray-200 hover:border-purple-500 transition-all';
             
-            // セクション表示切り替え
             const routeSection = document.getElementById('routeCreationSection');
             const stampSection = document.getElementById('stampRallySection');
             
@@ -661,18 +395,12 @@
                 renderRallyList();
             }
 
-            // ルート関連をクリア
-            if (currentPolyline) {
-                currentPolyline.setMap(null);
-                currentPolyline = null;
-            }
+            if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
             document.getElementById('routeInfo').classList.add('hidden');
             document.getElementById('routeSwitch').classList.add('hidden');
         }
 
-        // ========================================
         // スタンプラリー機能
-        // ========================================
         function renderRallyList(category = 'all') {
             const container = document.getElementById('rallyList');
             container.innerHTML = '';
@@ -707,14 +435,12 @@
         }
 
         function filterByCategory(category) {
-            // ボタンのスタイル更新
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.classList.remove('active');
                 btn.classList.add('border-gray-200');
             });
             event.target.classList.add('active');
             event.target.classList.remove('border-gray-200');
-            
             renderRallyList(category);
         }
 
@@ -730,7 +456,6 @@
             
             renderSpotList(rallyKey);
             showSpotsOnMap(rallyKey);
-            
             document.getElementById('rallyDetailSection').classList.remove('hidden');
         }
 
@@ -749,25 +474,15 @@
             
             let spots = [...rally.spots];
             
-            // ソート
             if (sortMode === 'distance' && userLocation) {
-                spots.sort((a, b) => {
-                    const distA = calculateDistance(userLocation, { lat: a.lat, lng: a.lng });
-                    const distB = calculateDistance(userLocation, { lat: b.lat, lng: b.lng });
-                    return distA - distB;
-                });
+                spots.sort((a, b) => calculateDistance(userLocation, {lat: a.lat, lng: a.lng}) - calculateDistance(userLocation, {lat: b.lat, lng: b.lng}));
             } else if (sortMode === 'unvisited') {
-                spots.sort((a, b) => {
-                    const aVisited = visited.includes(a.id);
-                    const bVisited = visited.includes(b.id);
-                    if (aVisited === bVisited) return 0;
-                    return aVisited ? 1 : -1;
-                });
+                spots.sort((a, b) => (visited.includes(a.id) ? 1 : 0) - (visited.includes(b.id) ? 1 : 0));
             }
             
             spots.forEach(spot => {
                 const isVisited = visited.includes(spot.id);
-                const distance = userLocation ? calculateDistance(userLocation, { lat: spot.lat, lng: spot.lng }) : null;
+                const distance = userLocation ? calculateDistance(userLocation, {lat: spot.lat, lng: spot.lng}) : null;
                 
                 const card = document.createElement('div');
                 card.className = `p-4 rounded-xl border-2 ${isVisited ? 'stamp-visited' : 'stamp-unvisited'}`;
@@ -782,11 +497,7 @@
                             ${spot.blessing ? `<div class="text-xs text-purple-600 ml-7">🙏 ${spot.blessing}</div>` : ''}
                             ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
                         </div>
-                        ${!isVisited ? `
-                            <button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600">
-                                チェックイン
-                            </button>
-                        ` : ''}
+                        ${!isVisited ? `<button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600">チェックイン</button>` : ''}
                     </div>
                 `;
                 container.appendChild(card);
@@ -802,101 +513,67 @@
 
         function showSpotsOnMap(rallyKey) {
             clearStampMarkers();
-            
             const rally = stampRallies[rallyKey];
             const visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
             const bounds = new google.maps.LatLngBounds();
-            
-            if (userLocation) {
-                bounds.extend(userLocation);
-            }
+            if (userLocation) bounds.extend(userLocation);
             
             rally.spots.forEach(spot => {
                 const isVisited = visited.includes(spot.id);
                 const marker = new google.maps.Marker({
-                    position: { lat: spot.lat, lng: spot.lng },
+                    position: {lat: spot.lat, lng: spot.lng},
                     map: map,
                     title: spot.name,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 12,
-                        fillColor: isVisited ? '#10b981' : '#ef4444',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 2
-                    }
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: isVisited ? '#10b981' : '#ef4444', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
                 });
                 
                 const infoWindow = new google.maps.InfoWindow({
                     content: `<div style="padding:8px;"><strong>${spot.name}</strong><br>${spot.detail || ''}<br>${isVisited ? '✅ 訪問済み' : '⬜ 未訪問'}</div>`
                 });
-                
                 marker.addListener('click', () => infoWindow.open(map, marker));
                 stampMarkers.push(marker);
-                bounds.extend({ lat: spot.lat, lng: spot.lng });
+                bounds.extend({lat: spot.lat, lng: spot.lng});
             });
-            
             map.fitBounds(bounds);
         }
 
         function clearStampMarkers() {
-            stampMarkers.forEach(marker => marker.setMap(null));
+            stampMarkers.forEach(m => m.setMap(null));
             stampMarkers = [];
         }
 
-        // ========================================
-        // チェックイン機能（重複連動対応）
-        // ========================================
+        // チェックイン
         function checkIn(rallyKey, spotId) {
-            if (!navigator.geolocation) {
-                alert('位置情報がサポートされていません');
-                return;
-            }
+            if (!navigator.geolocation) { alert('位置情報がサポートされていません'); return; }
             
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userPos = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    
-                    const rally = stampRallies[rallyKey];
-                    const spot = rally.spots.find(s => s.id === spotId);
-                    const spotPos = { lat: spot.lat, lng: spot.lng };
-                    
-                    const distance = calculateDistance(userPos, spotPos);
-                    
-                    if (distance <= 0.1) { // 100m以内
-                        // チェックイン成功
-                        let visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
-                        if (!visited.includes(spotId)) {
-                            visited.push(spotId);
-                            localStorage.setItem(`stamp_${rallyKey}`, JSON.stringify(visited));
-                        }
-                        
-                        // 他のラリーで重複するスポットを検出
-                        const overlaps = findOverlappingSpots(spot.name, spot.lat, spot.lng, rallyKey);
-                        
-                        // 全制覇チェック
-                        const isComplete = visited.length === rally.spots.length;
-                        
-                        if (overlaps.length > 0) {
-                            showOverlapDialog(spot.name, spot.blessing, overlaps, isComplete, rallyKey);
-                        } else if (isComplete) {
-                            showCompleteModal(rally.name);
-                        } else {
-                            showCheckinSuccess(spot.name, spot.blessing);
-                        }
-                        
-                        openRallyDetail(rallyKey);
-                    } else {
-                        alert(`まだ${spot.name}から${(distance * 1000).toFixed(0)}m離れています。\n100m以内に近づいてください。`);
+            navigator.geolocation.getCurrentPosition(pos => {
+                const userPos = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+                const rally = stampRallies[rallyKey];
+                const spot = rally.spots.find(s => s.id === spotId);
+                const distance = calculateDistance(userPos, {lat: spot.lat, lng: spot.lng});
+                
+                if (distance <= 0.1) {
+                    let visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
+                    if (!visited.includes(spotId)) {
+                        visited.push(spotId);
+                        localStorage.setItem(`stamp_${rallyKey}`, JSON.stringify(visited));
                     }
-                },
-                (error) => {
-                    alert('位置情報を取得できませんでした');
+                    
+                    const overlaps = findOverlappingSpots(spot.name, spot.lat, spot.lng, rallyKey);
+                    const isComplete = visited.length === rally.spots.length;
+                    
+                    if (overlaps.length > 0) {
+                        showOverlapDialog(spot.name, spot.blessing, overlaps, isComplete, rallyKey);
+                    } else if (isComplete) {
+                        showCompleteModal(rally.name);
+                    } else {
+                        showCheckinSuccess(spot.name, spot.blessing);
+                    }
+                    openRallyDetail(rallyKey);
+                } else {
+                    alert(`まだ${spot.name}から${(distance * 1000).toFixed(0)}m離れています。\n100m以内に近づいてください。`);
                 }
-            );
+            }, () => alert('位置情報を取得できませんでした'));
         }
 
         function findOverlappingSpots(spotName, spotLat, spotLng, currentRallyKey) {
@@ -905,28 +582,14 @@
             
             for (const [rallyKey, rally] of Object.entries(stampRallies)) {
                 if (rallyKey === currentRallyKey) continue;
-                
                 for (const spot of rally.spots) {
                     const baseTargetName = spot.name.replace(/（.*）/g, '').replace(/\(.*\)/g, '');
-                    const distance = calculateDistance(
-                        { lat: spotLat, lng: spotLng },
-                        { lat: spot.lat, lng: spot.lng }
-                    );
+                    const distance = calculateDistance({lat: spotLat, lng: spotLng}, {lat: spot.lat, lng: spot.lng});
                     
-                    if (baseSpotName.includes(baseTargetName) || 
-                        baseTargetName.includes(baseSpotName) ||
-                        distance <= 0.05) {
-                        
+                    if (baseSpotName.includes(baseTargetName) || baseTargetName.includes(baseSpotName) || distance <= 0.05) {
                         const visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
                         if (!visited.includes(spot.id)) {
-                            overlaps.push({
-                                rallyKey: rallyKey,
-                                rallyName: rally.name,
-                                rallyIcon: rally.icon,
-                                spotId: spot.id,
-                                spotName: spot.name,
-                                spotDetail: spot.detail
-                            });
+                            overlaps.push({ rallyKey, rallyName: rally.name, rallyIcon: rally.icon, spotId: spot.id, spotName: spot.name, spotDetail: spot.detail });
                         }
                     }
                 }
@@ -938,10 +601,7 @@
             let checkboxes = overlaps.map((o, i) => `
                 <label style="display:flex;align-items:center;padding:10px;background:#f5f5f5;border-radius:8px;margin:5px 0;cursor:pointer;">
                     <input type="checkbox" id="overlap_${i}" data-rally="${o.rallyKey}" data-spot="${o.spotId}" checked style="width:20px;height:20px;margin-right:10px;">
-                    <div>
-                        <div style="font-weight:bold;">${o.rallyIcon} ${o.rallyName}</div>
-                        <div style="font-size:12px;color:#666;">${o.spotName}${o.spotDetail ? ' - ' + o.spotDetail : ''}</div>
-                    </div>
+                    <div><div style="font-weight:bold;">${o.rallyIcon} ${o.rallyName}</div><div style="font-size:12px;color:#666;">${o.spotName}${o.spotDetail ? ' - ' + o.spotDetail : ''}</div></div>
                 </label>
             `).join('');
             
@@ -950,18 +610,12 @@
                 <h2 class="text-xl font-bold mb-2">チェックイン成功！</h2>
                 <p class="font-bold text-lg">${spotName}</p>
                 ${blessing ? `<p class="text-purple-600 mt-2">🙏 ${blessing}</p>` : ''}
-                
                 <div class="mt-4 p-4 bg-orange-50 rounded-xl text-left">
-                    <p class="font-bold mb-2">📍 この場所は他のスタンプラリーにも含まれています：</p>
+                    <p class="font-bold mb-2">📍 この場所は他のラリーにも含まれています：</p>
                     ${checkboxes}
                 </div>
-                
-                <button onclick="applyOverlapCheckins(${isComplete}, '${currentRallyKey}')" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">
-                    選択したラリーも訪問済みにする
-                </button>
-                <button onclick="closeCheckinModal();${isComplete ? `showCompleteModal(stampRallies['${currentRallyKey}'].name)` : ''}" class="w-full mt-2 py-3 bg-gray-200 rounded-xl font-bold">
-                    このラリーだけ
-                </button>
+                <button onclick="applyOverlapCheckins(${isComplete}, '${currentRallyKey}')" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">選択したラリーも訪問済みにする</button>
+                <button onclick="closeCheckinModal();${isComplete ? `showCompleteModal(stampRallies['${currentRallyKey}'].name)` : ''}" class="w-full mt-2 py-3 bg-gray-200 rounded-xl font-bold">このラリーだけ</button>
             `;
             document.getElementById('checkinModal').style.display = 'flex';
         }
@@ -974,39 +628,19 @@
             checkboxes.forEach(cb => {
                 const rallyKey = cb.dataset.rally;
                 const spotId = parseInt(cb.dataset.spot);
-                
                 let visited = JSON.parse(localStorage.getItem(`stamp_${rallyKey}`) || '[]');
                 if (!visited.includes(spotId)) {
                     visited.push(spotId);
                     localStorage.setItem(`stamp_${rallyKey}`, JSON.stringify(visited));
                     appliedCount++;
-                    
-                    if (visited.length === stampRallies[rallyKey].spots.length) {
-                        completedRallies.push(stampRallies[rallyKey].name);
-                    }
+                    if (visited.length === stampRallies[rallyKey].spots.length) completedRallies.push(stampRallies[rallyKey].name);
                 }
             });
             
-            let resultHtml = `
-                <div class="text-5xl mb-4">${completedRallies.length > 0 || isComplete ? '🏆' : '✅'}</div>
-                <h2 class="text-xl font-bold mb-2">${appliedCount}件のラリーに反映しました！</h2>
-            `;
-            
-            if (isComplete) {
-                completedRallies.unshift(stampRallies[currentRallyKey].name);
-            }
-            
-            if (completedRallies.length > 0) {
-                resultHtml += `
-                    <div class="mt-4 p-4 bg-green-50 rounded-xl">
-                        <p class="font-bold">🎉 全制覇達成！</p>
-                        ${completedRallies.map(name => `<p>・${name}</p>`).join('')}
-                    </div>
-                `;
-            }
-            
+            let resultHtml = `<div class="text-5xl mb-4">${completedRallies.length > 0 || isComplete ? '🏆' : '✅'}</div><h2 class="text-xl font-bold mb-2">${appliedCount}件のラリーに反映しました！</h2>`;
+            if (isComplete) completedRallies.unshift(stampRallies[currentRallyKey].name);
+            if (completedRallies.length > 0) resultHtml += `<div class="mt-4 p-4 bg-green-50 rounded-xl"><p class="font-bold">🎉 全制覇達成！</p>${completedRallies.map(n => `<p>・${n}</p>`).join('')}</div>`;
             resultHtml += `<button onclick="closeCheckinModal()" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">閉じる</button>`;
-            
             document.getElementById('checkinContent').innerHTML = resultHtml;
         }
 
@@ -1026,807 +660,330 @@
                 <div class="text-5xl mb-4">🏆</div>
                 <h2 class="text-xl font-bold mb-2">全制覇おめでとう！</h2>
                 <p class="font-bold text-lg">${rallyName}</p>
-                <p class="mt-2">すべてのスポットを訪問しました！</p>
                 <div class="text-4xl mt-4">🎉🎊🎉</div>
                 <button onclick="closeCheckinModal()" class="w-full mt-4 py-3 bg-green-500 text-white rounded-xl font-bold">閉じる</button>
             `;
             document.getElementById('checkinModal').style.display = 'flex';
         }
 
-        function closeCheckinModal() {
-            document.getElementById('checkinModal').style.display = 'none';
-        }
+        function closeCheckinModal() { document.getElementById('checkinModal').style.display = 'none'; }
 
-        // 近くの未訪問スポットへルート作成
         function createRouteToNearestSpot() {
             if (!currentRallyKey || !userLocation) return;
-            
             const rally = stampRallies[currentRallyKey];
             const visited = JSON.parse(localStorage.getItem(`stamp_${currentRallyKey}`) || '[]');
-            
             const unvisitedSpots = rally.spots.filter(s => !visited.includes(s.id));
             
-            if (unvisitedSpots.length === 0) {
-                alert('すべてのスポットを訪問済みです！');
-                return;
-            }
+            if (unvisitedSpots.length === 0) { alert('すべてのスポットを訪問済みです！'); return; }
             
-            // 最も近い未訪問スポットを見つける
-            let nearest = null;
-            let nearestDistance = Infinity;
-            
+            let nearest = null, nearestDistance = Infinity;
             unvisitedSpots.forEach(spot => {
-                const dist = calculateDistance(userLocation, { lat: spot.lat, lng: spot.lng });
-                if (dist < nearestDistance) {
-                    nearestDistance = dist;
-                    nearest = spot;
-                }
+                const dist = calculateDistance(userLocation, {lat: spot.lat, lng: spot.lng});
+                if (dist < nearestDistance) { nearestDistance = dist; nearest = spot; }
             });
             
             if (nearest) {
-                // 片道モードに切り替えて目的地を設定
                 setMode('oneway');
-                selectDestination({
-                    name: nearest.name,
-                    lat: nearest.lat,
-                    lng: nearest.lng
-                });
-                
-                alert(`${nearest.name}への経路を作成します。\n目標歩数を設定して「ルートを作成」ボタンを押してください。`);
+                selectDestination({ name: nearest.name, lat: nearest.lat, lng: nearest.lng });
+                alert(`${nearest.name}への経路を作成します。\n歩数を設定して「ルートを作成」を押してください。`);
             }
         }
 
-        // ========================================
-        // ルート作成機能（既存コードを維持）
-        // ========================================
+        // ルート作成
         function showRandomMission() {
-            const randomIndex = Math.floor(Math.random() * missions.length);
-            const mission = missions[randomIndex];
-            
-            document.getElementById('missionEmoji').textContent = mission.emoji;
-            document.getElementById('missionText').textContent = mission.text;
-            document.getElementById('missionHint').textContent = mission.hint || '';
-            
+            const m = missions[Math.floor(Math.random() * missions.length)];
+            document.getElementById('missionEmoji').textContent = m.emoji;
+            document.getElementById('missionText').textContent = m.text;
+            document.getElementById('missionHint').textContent = m.hint || '';
             document.getElementById('missionDisplay').classList.remove('hidden');
         }
 
         function updateSteps(value) {
             currentSteps = parseInt(value);
             document.getElementById('stepsDisplay').textContent = currentSteps.toLocaleString();
-            const distance = ((currentSteps * 0.7) / 1000).toFixed(1);
-            document.getElementById('distanceDisplay').textContent = `歩 (${distance}km)`;
-            
-            if (currentMode === 'oneway' && selectedDestination) {
-                updateDestinationDisplay();
-            }
+            document.getElementById('distanceDisplay').textContent = `歩 (${((currentSteps * 0.7) / 1000).toFixed(1)}km)`;
+            if (currentMode === 'oneway' && selectedDestination) updateDestinationDisplay();
         }
 
-        function setSteps(value) {
-            currentSteps = value;
-            document.getElementById('stepsRange').value = value;
-            updateSteps(value);
-        }
+        function setSteps(value) { currentSteps = value; document.getElementById('stepsRange').value = value; updateSteps(value); }
 
         function initAutocomplete() {
             const input = document.getElementById('destAddress');
-            
-            const options = {
-                componentRestrictions: { country: 'jp' },
-                fields: ['formatted_address', 'geometry', 'name', 'place_id'],
-                types: ['establishment', 'geocode']
-            };
-
-            autocomplete = new google.maps.places.Autocomplete(input, options);
-
-            if (map) {
-                autocomplete.bindTo('bounds', map);
-            }
-
+            autocomplete = new google.maps.places.Autocomplete(input, { componentRestrictions: {country: 'jp'}, fields: ['formatted_address', 'geometry', 'name', 'place_id'], types: ['establishment', 'geocode'] });
+            if (map) autocomplete.bindTo('bounds', map);
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-
-                if (!place.geometry || !place.geometry.location) {
-                    autocompletePlace = null;
-                    return;
+                if (place.geometry?.location) {
+                    autocompletePlace = { name: place.name || place.formatted_address, address: place.formatted_address, location: { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() } };
                 }
-
-                autocompletePlace = {
-                    name: place.name || place.formatted_address,
-                    address: place.formatted_address,
-                    location: {
-                        lat: place.geometry.location.lat(),
-                        lng: place.geometry.location.lng()
-                    }
-                };
             });
         }
 
         function loadSavedDestinations() {
             const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
             const container = document.getElementById('savedDestinations');
-            container.innerHTML = '';
-            
-            if (destinations.length === 0) {
-                container.innerHTML = '<div class="text-sm text-gray-500 py-2">登録された目的地はありません</div>';
-                return;
-            }
-            
+            container.innerHTML = destinations.length === 0 ? '<div class="text-sm text-gray-500 py-2">登録なし</div>' : '';
             destinations.forEach((dest, index) => {
-                const button = document.createElement('button');
-                button.className = 'w-full p-3 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all text-left relative';
-                button.innerHTML = `
-                    <div class="font-medium">${dest.name}</div>
-                    <div class="text-xs text-gray-500 mt-1">${dest.address || '住所なし'}</div>
-                    <button onclick="deleteDestination(${index}); event.stopPropagation();" class="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xl">&times;</button>
-                `;
-                button.onclick = () => selectDestination(dest);
-                container.appendChild(button);
+                const btn = document.createElement('button');
+                btn.className = 'w-full p-3 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all text-left relative';
+                btn.innerHTML = `<div class="font-medium">${dest.name}</div><div class="text-xs text-gray-500 mt-1">${dest.address || ''}</div><button onclick="deleteDestination(${index}); event.stopPropagation();" class="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xl">&times;</button>`;
+                btn.onclick = () => selectDestination(dest);
+                container.appendChild(btn);
             });
         }
 
-        function showAddDestination() {
-            document.getElementById('addDestinationModal').classList.remove('hidden');
-        }
-
-        function closeAddDestination() {
-            document.getElementById('addDestinationModal').classList.add('hidden');
-            document.getElementById('destName').value = '';
-            document.getElementById('destAddress').value = '';
-            autocompletePlace = null;
-        }
+        function showAddDestination() { document.getElementById('addDestinationModal').classList.remove('hidden'); }
+        function closeAddDestination() { document.getElementById('addDestinationModal').classList.add('hidden'); document.getElementById('destName').value = ''; document.getElementById('destAddress').value = ''; autocompletePlace = null; }
 
         async function saveDestination() {
             const name = document.getElementById('destName').value.trim();
-            const addressInput = document.getElementById('destAddress').value.trim();
+            const addr = document.getElementById('destAddress').value.trim();
+            if (!name) { alert('名前を入力してください'); return; }
+            if (!addr) { alert('住所を入力してください'); return; }
             
-            if (!name) {
-                alert('名前を入力してください');
-                return;
-            }
-            
-            if (!addressInput) {
-                alert('住所を入力してください');
-                return;
-            }
-            
+            let dest;
             if (autocompletePlace) {
-                const dest = {
-                    name: name,
-                    address: autocompletePlace.address,
-                    lat: autocompletePlace.location.lat,
-                    lng: autocompletePlace.location.lng
-                };
-                
-                const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
-                destinations.push(dest);
-                localStorage.setItem('savedDestinations', JSON.stringify(destinations));
-                
-                selectDestination(dest);
-                autocompletePlace = null;
-                closeAddDestination();
-                loadSavedDestinations();
-                return;
+                dest = { name, address: autocompletePlace.address, lat: autocompletePlace.location.lat, lng: autocompletePlace.location.lng };
+            } else {
+                try {
+                    const results = await new Promise((resolve, reject) => geocoder.geocode({address: addr}, (r, s) => s === 'OK' ? resolve(r) : reject(s)));
+                    const loc = results[0].geometry.location;
+                    dest = { name, address: results[0].formatted_address, lat: loc.lat(), lng: loc.lng() };
+                } catch { alert('住所が見つかりませんでした'); return; }
             }
-            
-            try {
-                const results = await new Promise((resolve, reject) => {
-                    geocoder.geocode({ address: addressInput }, (results, status) => {
-                        if (status === 'OK') resolve(results);
-                        else reject(status);
-                    });
-                });
-                
-                const location = results[0].geometry.location;
-                const dest = {
-                    name: name,
-                    address: results[0].formatted_address,
-                    lat: location.lat(),
-                    lng: location.lng()
-                };
-                
-                const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
-                destinations.push(dest);
-                localStorage.setItem('savedDestinations', JSON.stringify(destinations));
-                
-                selectDestination(dest);
-                closeAddDestination();
-                loadSavedDestinations();
-            } catch (error) {
-                alert('住所が見つかりませんでした。');
-            }
+            const dests = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
+            dests.push(dest);
+            localStorage.setItem('savedDestinations', JSON.stringify(dests));
+            selectDestination(dest);
+            closeAddDestination();
+            loadSavedDestinations();
         }
 
         async function useDestinationNow() {
-            const addressInput = document.getElementById('destAddress').value.trim();
-            
-            if (!addressInput) {
-                alert('住所を入力してください');
-                return;
-            }
-            
+            const addr = document.getElementById('destAddress').value.trim();
+            if (!addr) { alert('住所を入力してください'); return; }
             if (autocompletePlace) {
-                selectDestination({
-                    name: autocompletePlace.name,
-                    address: autocompletePlace.address,
-                    lat: autocompletePlace.location.lat,
-                    lng: autocompletePlace.location.lng
-                });
-                autocompletePlace = null;
+                selectDestination({ name: autocompletePlace.name, address: autocompletePlace.address, lat: autocompletePlace.location.lat, lng: autocompletePlace.location.lng });
                 closeAddDestination();
                 return;
             }
-            
             try {
-                const results = await new Promise((resolve, reject) => {
-                    geocoder.geocode({ address: addressInput }, (results, status) => {
-                        if (status === 'OK') resolve(results);
-                        else reject(status);
-                    });
-                });
-                
-                const location = results[0].geometry.location;
-                selectDestination({
-                    name: results[0].formatted_address,
-                    address: results[0].formatted_address,
-                    lat: location.lat(),
-                    lng: location.lng()
-                });
+                const results = await new Promise((resolve, reject) => geocoder.geocode({address: addr}, (r, s) => s === 'OK' ? resolve(r) : reject(s)));
+                const loc = results[0].geometry.location;
+                selectDestination({ name: results[0].formatted_address, address: results[0].formatted_address, lat: loc.lat(), lng: loc.lng() });
                 closeAddDestination();
-            } catch (error) {
-                alert('住所が見つかりませんでした。');
-            }
+            } catch { alert('住所が見つかりませんでした'); }
         }
 
         function deleteDestination(index) {
-            if (!confirm('この目的地を削除しますか？')) return;
-            
-            const destinations = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
-            destinations.splice(index, 1);
-            localStorage.setItem('savedDestinations', JSON.stringify(destinations));
-            
-            if (selectedDestination && selectedDestination.index === index) {
-                selectedDestination = null;
-                document.getElementById('selectedDestinationDisplay').classList.add('hidden');
-                if (destinationMarker) {
-                    destinationMarker.setMap(null);
-                    destinationMarker = null;
-                }
-            }
-            
+            if (!confirm('削除しますか？')) return;
+            const dests = JSON.parse(localStorage.getItem('savedDestinations') || '[]');
+            dests.splice(index, 1);
+            localStorage.setItem('savedDestinations', JSON.stringify(dests));
             loadSavedDestinations();
         }
 
         function selectDestination(dest) {
-            selectedDestination = { ...dest };
-            
-            if (destinationMarker) {
-                destinationMarker.setMap(null);
-            }
-            
+            selectedDestination = {...dest};
+            if (destinationMarker) destinationMarker.setMap(null);
             destinationMarker = new google.maps.Marker({
-                position: { lat: dest.lat, lng: dest.lng },
-                map: map,
-                title: dest.name,
-                animation: google.maps.Animation.DROP,
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 15,
-                    fillColor: '#EA4335',
-                    fillOpacity: 1,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 3
-                }
+                position: {lat: dest.lat, lng: dest.lng}, map, title: dest.name, animation: google.maps.Animation.DROP,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 15, fillColor: '#EA4335', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }
             });
-            
-            map.panTo({ lat: dest.lat, lng: dest.lng });
+            map.panTo({lat: dest.lat, lng: dest.lng});
             updateDestinationDisplay();
         }
 
         function updateDestinationDisplay() {
             if (!selectedDestination) return;
-            
-            const directDistance = calculateDistance(userLocation, selectedDestination);
-            const directSteps = Math.round((directDistance / 0.7) * 1000);
-            const targetDistance = (currentSteps * 0.7) / 1000;
-            const detourDistance = targetDistance - directDistance;
-            
+            const directDist = calculateDistance(userLocation, selectedDestination);
+            const targetDist = (currentSteps * 0.7) / 1000;
+            const detour = targetDist - directDist;
             document.getElementById('selectedDestinationName').textContent = selectedDestination.name;
-            
-            if (detourDistance > 0) {
-                document.getElementById('selectedDestinationDistance').textContent = 
-                    `直線: ${directDistance.toFixed(1)}km + 寄り道: ${detourDistance.toFixed(1)}km`;
-            } else {
-                document.getElementById('selectedDestinationDistance').textContent = 
-                    `直線距離: ${directDistance.toFixed(1)}km（設定歩数より長いため最短ルート）`;
-            }
-            
+            document.getElementById('selectedDestinationDistance').textContent = detour > 0 ? `直線: ${directDist.toFixed(1)}km + 寄り道: ${detour.toFixed(1)}km` : `直線距離: ${directDist.toFixed(1)}km`;
             document.getElementById('selectedDestinationDisplay').classList.remove('hidden');
         }
 
         function selectFromMap() {
             if (!map) return;
-            
             isSelectingFromMap = true;
             document.getElementById('mapSelectBtn').textContent = '📍 地図をタップして選択中...';
-            document.getElementById('mapSelectBtn').classList.add('bg-green-100', 'text-green-700');
-            
             let tempMarker = null;
             
-            const listener = map.addListener('click', (e) => {
+            const listener = map.addListener('click', e => {
                 if (tempMarker) tempMarker.setMap(null);
-                
-                const selectedLat = e.latLng.lat();
-                const selectedLng = e.latLng.lng();
-                
-                selectedDestination = {
-                    name: '地図で選択',
-                    lat: selectedLat,
-                    lng: selectedLng
-                };
-                
+                selectedDestination = { name: '地図で選択', lat: e.latLng.lat(), lng: e.latLng.lng() };
                 if (destinationMarker) destinationMarker.setMap(null);
-                
                 destinationMarker = new google.maps.Marker({
-                    position: e.latLng,
-                    map: map,
-                    title: '選択した目的地',
-                    animation: google.maps.Animation.DROP,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 15,
-                        fillColor: '#EA4335',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 3
-                    }
+                    position: e.latLng, map, title: '選択した目的地', animation: google.maps.Animation.DROP,
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 15, fillColor: '#EA4335', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }
                 });
-                
                 updateDestinationDisplay();
                 isSelectingFromMap = false;
-                document.getElementById('mapSelectBtn').textContent = '🗺️ 地図から選択（おすすめ）';
-                document.getElementById('mapSelectBtn').classList.remove('bg-green-100', 'text-green-700');
+                document.getElementById('mapSelectBtn').textContent = '🗺️ 地図から選択';
                 google.maps.event.removeListener(listener);
-                google.maps.event.removeListener(moveListener);
-            });
-            
-            const moveListener = map.addListener('mousemove', (e) => {
-                if (tempMarker) {
-                    tempMarker.setPosition(e.latLng);
-                } else {
-                    tempMarker = new google.maps.Marker({
-                        position: e.latLng,
-                        map: map,
-                        icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 8,
-                            fillColor: '#EA4335',
-                            fillOpacity: 0.5,
-                            strokeColor: '#ffffff',
-                            strokeWeight: 2
-                        }
-                    });
-                }
             });
         }
 
         async function createRoute() {
-            if (!map || !userLocation) {
-                alert('地図がまだ準備できていません');
-                return;
-            }
-
-            if (currentMode === 'oneway' && !selectedDestination) {
-                alert('目的地を選択してください');
-                return;
-            }
+            if (!map || !userLocation) { alert('地図がまだ準備できていません'); return; }
+            if (currentMode === 'oneway' && !selectedDestination) { alert('目的地を選択してください'); return; }
 
             const button = document.getElementById('createRouteBtn');
             button.disabled = true;
-            button.textContent = currentMode === 'loop' ? '⏳ ルート作成中...（3パターン）' : '⏳ ルート作成中...';
-
-            if (currentPolyline) {
-                currentPolyline.setMap(null);
-                currentPolyline = null;
-            }
+            button.textContent = '⏳ ルート作成中...';
+            if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 
             try {
-                const targetDistance = (currentSteps * 0.7) / 1000;
+                const targetDist = (currentSteps * 0.7) / 1000;
                 const avoidHighways = document.getElementById('avoidHighways').checked;
 
                 if (currentMode === 'loop') {
                     allRoutes = [];
-                    const routePromises = [];
-                    const candidateCount = 6;
-
-                    for (let i = 0; i < candidateCount; i++) {
-                        const waypoints = generateWaypoints(userLocation, targetDistance, i * 1000);
-                        
-                        const promise = fetch('/api/directions', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                origin: userLocation,
-                                destination: userLocation,
-                                waypoints: waypoints,
-                                avoidHighways: avoidHighways,
-                                optimizeWaypoints: false
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-                                return data.routes[0];
-                            }
-                            return null;
-                        });
-
-                        routePromises.push(promise);
+                    const promises = [];
+                    for (let i = 0; i < 6; i++) {
+                        const waypoints = generateWaypoints(userLocation, targetDist, i * 1000);
+                        promises.push(fetch('/api/directions', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ origin: userLocation, destination: userLocation, waypoints, avoidHighways, optimizeWaypoints: false })
+                        }).then(r => r.json()).then(d => d.status === 'OK' && d.routes?.[0] ? d.routes[0] : null));
                     }
-
-                    const routes = await Promise.all(routePromises);
-                    const validRoutes = routes.filter(route => route !== null);
-
-                    const scoredRoutes = validRoutes.map(route => {
-                        const score = calculateRouteOverlapScore(route);
-                        return { route, score };
-                    });
-
-                    scoredRoutes.sort((a, b) => a.score - b.score);
-                    allRoutes = scoredRoutes.slice(0, 3).map(sr => sr.route);
-
-                    if (allRoutes.length > 0) {
-                        displayRoute(0);
-                        if (allRoutes.length > 1) {
-                            showRouteSelection();
-                        } else {
-                            document.getElementById('routeSwitch').classList.add('hidden');
-                        }
-                    } else {
-                        alert('ルート作成に失敗しました');
-                    }
+                    const routes = await Promise.all(promises);
+                    const valid = routes.filter(r => r).map(r => ({route: r, score: calculateRouteOverlapScore(r)})).sort((a,b) => a.score - b.score);
+                    allRoutes = valid.slice(0, 3).map(v => v.route);
+                    if (allRoutes.length > 0) { displayRoute(0); if (allRoutes.length > 1) showRouteSelection(); else document.getElementById('routeSwitch').classList.add('hidden'); }
+                    else alert('ルート作成に失敗しました');
                 } else {
-                    const directDistance = calculateDistance(userLocation, selectedDestination);
-                    const detourDistance = targetDistance - directDistance;
-                    
-                    let waypoints = [];
-                    if (detourDistance > 0) {
-                        waypoints = generateDetourWaypoints(userLocation, selectedDestination, detourDistance);
-                    }
-                    
+                    const directDist = calculateDistance(userLocation, selectedDestination);
+                    const detour = targetDist - directDist;
+                    let waypoints = detour > 0 ? generateDetourWaypoints(userLocation, selectedDestination, detour) : [];
                     const response = await fetch('/api/directions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            origin: userLocation,
-                            destination: selectedDestination,
-                            waypoints: waypoints,
-                            avoidHighways: avoidHighways,
-                            optimizeWaypoints: false
-                        })
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ origin: userLocation, destination: selectedDestination, waypoints, avoidHighways, optimizeWaypoints: false })
                     });
-
                     const data = await response.json();
-
-                    if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-                        allRoutes = [data.routes[0]];
-                        displayRoute(0);
-                        document.getElementById('routeSwitch').classList.add('hidden');
-                    } else {
-                        alert('ルート作成に失敗しました: ' + (data.error || data.status));
-                    }
+                    if (data.status === 'OK' && data.routes?.[0]) { allRoutes = [data.routes[0]]; displayRoute(0); document.getElementById('routeSwitch').classList.add('hidden'); }
+                    else alert('ルート作成に失敗しました');
                 }
-            } catch (error) {
-                alert('エラーが発生しました: ' + error.message);
-            } finally {
-                button.disabled = false;
-                button.textContent = currentMode === 'loop' ? '🗺️ ルートを作成（3パターン生成）' : '🗺️ ルートを作成';
-            }
+            } catch (e) { alert('エラー: ' + e.message); }
+            finally { button.disabled = false; button.textContent = currentMode === 'loop' ? '🗺️ ルートを作成（3パターン生成）' : '🗺️ ルートを作成'; }
         }
 
         function calculateRouteOverlapScore(route) {
             const path = google.maps.geometry.encoding.decodePath(route.overview_polyline.points);
-            const segmentSet = new Map();
-            let overlapCount = 0;
-            
+            const segs = new Map();
+            let overlap = 0;
             for (let i = 0; i < path.length - 1; i++) {
-                const p1 = path[i];
-                const p2 = path[i + 1];
-                
-                const key1 = `${p1.lat().toFixed(5)},${p1.lng().toFixed(5)}`;
-                const key2 = `${p2.lat().toFixed(5)},${p2.lng().toFixed(5)}`;
-                const segmentKey = key1 < key2 ? `${key1}-${key2}` : `${key2}-${key1}`;
-                
-                if (segmentSet.has(segmentKey)) {
-                    overlapCount++;
-                    segmentSet.set(segmentKey, segmentSet.get(segmentKey) + 1);
-                } else {
-                    segmentSet.set(segmentKey, 1);
-                }
+                const k1 = `${path[i].lat().toFixed(5)},${path[i].lng().toFixed(5)}`;
+                const k2 = `${path[i+1].lat().toFixed(5)},${path[i+1].lng().toFixed(5)}`;
+                const key = k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+                if (segs.has(key)) overlap++;
+                segs.set(key, (segs.get(key) || 0) + 1);
             }
-            
-            const totalSegments = path.length - 1;
-            return totalSegments > 0 ? overlapCount / totalSegments : 0;
+            return path.length > 1 ? overlap / (path.length - 1) : 0;
         }
 
-        function generateDetourWaypoints(origin, destination, detourDistanceKm) {
+        function generateDetourWaypoints(origin, dest, detourKm) {
             const waypoints = [];
-            
-            let numWaypoints;
-            if (detourDistanceKm < 1.0) numWaypoints = 2;
-            else if (detourDistanceKm < 2.0) numWaypoints = 3;
-            else if (detourDistanceKm < 3.5) numWaypoints = 4;
-            else if (detourDistanceKm < 5.0) numWaypoints = 5;
-            else numWaypoints = 6;
-            
-            const radiusKm = detourDistanceKm / 2.0;
-            const mainAngle = Math.atan2(destination.lng - origin.lng, destination.lat - origin.lat);
+            const num = detourKm < 1 ? 2 : detourKm < 2 ? 3 : detourKm < 3.5 ? 4 : detourKm < 5 ? 5 : 6;
+            const radius = detourKm / 2;
+            const mainAngle = Math.atan2(dest.lng - origin.lng, dest.lat - origin.lat);
             const side = Math.random() > 0.5 ? 1 : -1;
             
-            for (let i = 0; i < numWaypoints; i++) {
-                const progress = 0.15 + (i / (numWaypoints - 1)) * 0.7;
-                const baseLat = origin.lat + (destination.lat - origin.lat) * progress;
-                const baseLng = origin.lng + (destination.lng - origin.lng) * progress;
-                
-                const detourFactor = Math.sin(Math.PI * (i + 1) / (numWaypoints + 1));
-                const perpDistance = radiusKm * detourFactor * side;
+            for (let i = 0; i < num; i++) {
+                const progress = 0.15 + (i / (num - 1)) * 0.7;
+                const baseLat = origin.lat + (dest.lat - origin.lat) * progress;
+                const baseLng = origin.lng + (dest.lng - origin.lng) * progress;
+                const factor = Math.sin(Math.PI * (i + 1) / (num + 1));
+                const perpDist = radius * factor * side;
                 const perpAngle = mainAngle + Math.PI / 2;
-                
-                const lat = baseLat + (perpDistance / 111) * Math.cos(perpAngle);
-                const lng = baseLng + (perpDistance / (111 * Math.cos(baseLat * Math.PI / 180))) * Math.sin(perpAngle);
-                
-                waypoints.push({ lat, lng });
+                waypoints.push({ lat: baseLat + (perpDist / 111) * Math.cos(perpAngle), lng: baseLng + (perpDist / (111 * Math.cos(baseLat * Math.PI / 180))) * Math.sin(perpAngle) });
             }
-            
             return waypoints;
         }
 
-        function displayRoute(routeIndex) {
-            if (currentPolyline) {
-                currentPolyline.setMap(null);
-                currentPolyline = null;
-            }
-
-            currentRoute = allRoutes[routeIndex];
-
+        function displayRoute(idx) {
+            if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
+            currentRoute = allRoutes[idx];
             const path = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points);
-            
-            currentPolyline = new google.maps.Polyline({
-                path: path,
-                geodesic: true,
-                strokeColor: '#22c55e',
-                strokeOpacity: 1.0,
-                strokeWeight: 5,
-                map: map
-            });
-
+            currentPolyline = new google.maps.Polyline({ path, geodesic: true, strokeColor: '#22c55e', strokeOpacity: 1, strokeWeight: 5, map });
             const bounds = new google.maps.LatLngBounds();
-            path.forEach(point => bounds.extend(point));
+            path.forEach(p => bounds.extend(p));
             map.fitBounds(bounds);
 
-            let totalDistance = 0;
-            let totalDuration = 0;
-
-            currentRoute.legs.forEach(leg => {
-                totalDistance += leg.distance.value;
-                totalDuration += leg.duration.value;
-            });
-
-            totalRouteDistance = totalDistance;
-
-            const distanceKm = (totalDistance / 1000).toFixed(1);
-            const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
-            const timeMinutes = Math.round(totalDuration / 60);
-
-            document.getElementById('routeDistance').textContent = distanceKm;
-            document.getElementById('routeSteps').textContent = actualSteps.toLocaleString();
-            document.getElementById('routeTime').textContent = timeMinutes;
-
+            let totalDist = 0, totalDur = 0;
+            currentRoute.legs.forEach(leg => { totalDist += leg.distance.value; totalDur += leg.duration.value; });
+            totalRouteDistance = totalDist;
+            document.getElementById('routeDistance').textContent = (totalDist / 1000).toFixed(1);
+            document.getElementById('routeSteps').textContent = Math.round((totalDist / 1000) / 0.7 * 1000).toLocaleString();
+            document.getElementById('routeTime').textContent = Math.round(totalDur / 60);
             document.getElementById('routeInfo').classList.remove('hidden');
         }
 
         function showRouteSelection() {
-            const routeSwitchContainer = document.getElementById('routeSwitchButtons');
-            routeSwitchContainer.innerHTML = '';
-
-            allRoutes.forEach((route, index) => {
-                let totalDistance = 0;
-                route.legs.forEach(leg => {
-                    totalDistance += leg.distance.value;
-                });
-
-                const distanceKm = (totalDistance / 1000).toFixed(1);
-                const actualSteps = Math.round((totalDistance / 1000) / 0.7 * 1000);
-
-                const button = document.createElement('button');
-                button.className = 'flex-1 py-3 px-4 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all font-medium';
-                button.innerHTML = `
-                    <div class="text-center">
-                        <div class="text-sm">ルート${index + 1}</div>
-                        <div class="text-xs text-gray-600 mt-1">${distanceKm}km · ${actualSteps.toLocaleString()}歩</div>
-                    </div>
-                `;
-                button.onclick = () => {
-                    displayRoute(index);
-                    document.querySelectorAll('#routeSwitchButtons button').forEach(btn => {
-                        btn.classList.remove('border-green-500', 'bg-green-50');
-                        btn.classList.add('border-gray-200');
-                    });
-                    button.classList.add('border-green-500', 'bg-green-50');
-                    button.classList.remove('border-gray-200');
+            const container = document.getElementById('routeSwitchButtons');
+            container.innerHTML = '';
+            allRoutes.forEach((route, idx) => {
+                let dist = 0;
+                route.legs.forEach(leg => dist += leg.distance.value);
+                const btn = document.createElement('button');
+                btn.className = 'flex-1 py-3 px-4 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-all font-medium';
+                btn.innerHTML = `<div class="text-center"><div class="text-sm">ルート${idx + 1}</div><div class="text-xs text-gray-600 mt-1">${(dist/1000).toFixed(1)}km</div></div>`;
+                btn.onclick = () => {
+                    displayRoute(idx);
+                    document.querySelectorAll('#routeSwitchButtons button').forEach(b => { b.classList.remove('border-green-500', 'bg-green-50'); b.classList.add('border-gray-200'); });
+                    btn.classList.add('border-green-500', 'bg-green-50');
+                    btn.classList.remove('border-gray-200');
                 };
-
-                routeSwitchContainer.appendChild(button);
+                container.appendChild(btn);
             });
-
-            const firstButton = routeSwitchContainer.querySelector('button');
-            if (firstButton) {
-                firstButton.classList.add('border-green-500', 'bg-green-50');
-                firstButton.classList.remove('border-gray-200');
-            }
-
+            container.querySelector('button')?.classList.add('border-green-500', 'bg-green-50');
             document.getElementById('routeSwitch').classList.remove('hidden');
         }
 
-        function generateWaypoints(center, targetDistanceKm, seed = 0) {
+        function generateWaypoints(center, targetKm, seed = 0) {
             const waypoints = [];
             const timeSeed = (Date.now() % 1000 + seed) / 1000;
-            
-            const numWaypoints = 4;
-            const radiusKm = targetDistanceKm / 7.45;
-            const minDistanceBetweenWaypoints = radiusKm * 1.0;
+            const num = 4, radius = targetKm / 7.45;
             const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
-
-            let attempts = 0;
-            const maxAttempts = 50;
-
-            while (waypoints.length < numWaypoints && attempts < maxAttempts) {
-                const i = waypoints.length;
-                const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-                const randomOffset = (Math.random() - 0.5) * 0.15;
-                const angle = startAngle + baseAngle + randomOffset;
-                const distance = radiusKm * (0.97 + Math.random() * 0.06);
-
-                const lat = center.lat + (distance / 111) * Math.cos(angle);
-                const lng = center.lng + (distance / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle);
-
-                const newWaypoint = { lat, lng };
-
-                let tooClose = false;
-                for (const existingWaypoint of waypoints) {
-                    const dist = calculateDistance(existingWaypoint, newWaypoint);
-                    if (dist < minDistanceBetweenWaypoints) {
-                        tooClose = true;
-                        break;
-                    }
-                }
-
-                if (!tooClose) {
-                    waypoints.push(newWaypoint);
-                } else {
-                    attempts++;
-                }
+            for (let i = 0; i < num; i++) {
+                const angle = startAngle + (Math.PI * 2 / num) * i + (Math.random() - 0.5) * 0.15;
+                const dist = radius * (0.97 + Math.random() * 0.06);
+                waypoints.push({ lat: center.lat + (dist / 111) * Math.cos(angle), lng: center.lng + (dist / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle) });
             }
-
-            if (waypoints.length < numWaypoints) {
-                return generateWaypointsSimple(center, targetDistanceKm, seed);
-            }
-
             return waypoints;
         }
 
-        function generateWaypointsSimple(center, targetDistanceKm, seed = 0) {
-            const waypoints = [];
-            const timeSeed = (Date.now() % 1000 + seed) / 1000;
-            const numWaypoints = 4;
-            const radiusKm = targetDistanceKm / 7.45;
-            const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
-
-            for (let i = 0; i < numWaypoints; i++) {
-                const baseAngle = (Math.PI * 2 / numWaypoints) * i;
-                const randomOffset = (Math.random() - 0.5) * 0.15;
-                const angle = startAngle + baseAngle + randomOffset;
-                const distance = radiusKm * (0.97 + Math.random() * 0.06);
-
-                const lat = center.lat + (distance / 111) * Math.cos(angle);
-                const lng = center.lng + (distance / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle);
-
-                waypoints.push({ lat, lng });
-            }
-
-            return waypoints;
-        }
-
-        function calculateDistance(point1, point2) {
-            const R = 6371;
-            const dLat = (point2.lat - point1.lat) * Math.PI / 180;
-            const dLng = (point2.lng - point1.lng) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
-                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
+        function calculateDistance(p1, p2) {
+            const R = 6371, dLat = (p2.lat - p1.lat) * Math.PI / 180, dLng = (p2.lng - p1.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat * Math.PI/180) * Math.cos(p2.lat * Math.PI/180) * Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         function openInGoogleMaps() {
-            if (!currentRoute || !userLocation) {
-                alert('まずルートを作成してください');
-                return;
-            }
-
+            if (!currentRoute || !userLocation) { alert('まずルートを作成してください'); return; }
             const waypoints = [];
-            currentRoute.legs.forEach((leg, index) => {
-                if (index < currentRoute.legs.length - 1) {
-                    const loc = leg.end_location;
-                    waypoints.push(`${loc.lat},${loc.lng}`);
-                }
-            });
-
+            currentRoute.legs.forEach((leg, i) => { if (i < currentRoute.legs.length - 1) waypoints.push(`${leg.end_location.lat},${leg.end_location.lng}`); });
             const origin = `${userLocation.lat},${userLocation.lng}`;
-            let destination;
-            
-            if (currentMode === 'loop') {
-                destination = origin;
-            } else {
-                destination = `${selectedDestination.lat},${selectedDestination.lng}`;
-            }
-            
-            const waypointsParam = waypoints.join('|');
-            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsParam}&travelmode=walking`;
-
-            window.open(url, '_blank');
+            const dest = currentMode === 'loop' ? origin : `${selectedDestination.lat},${selectedDestination.lng}`;
+            window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${waypoints.join('|')}&travelmode=walking`, '_blank');
         }
 
-        // ========================================
-        // ナビゲーション機能
-        // ========================================
+        // ナビゲーション
         function startNavigation() {
-            if (!currentRoute) {
-                alert('ルートを先に作成してください');
-                return;
-            }
-
-            if (!navigator.geolocation) {
-                alert('このブラウザは位置情報に対応していません');
-                return;
-            }
-
-            isNavigating = true;
-            followMode = true;
-            startPosition = { ...userLocation };
-
+            if (!currentRoute) { alert('ルートを先に作成してください'); return; }
+            if (!navigator.geolocation) { alert('位置情報非対応'); return; }
+            isNavigating = true; followMode = true; startPosition = {...userLocation};
             enterNavigationMode();
-
-            watchId = navigator.geolocation.watchPosition(
-                updateCurrentPosition,
-                handlePositionError,
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-
+            watchId = navigator.geolocation.watchPosition(updateCurrentPosition, () => { document.getElementById('navStatus').textContent = '⚠️ GPS信号弱'; }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
             document.getElementById('navStatus').textContent = '📍 GPS追跡中';
-            document.getElementById('navStatus').className = 'text-sm text-green-600 font-medium';
         }
 
         function stopNavigation() {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-
+            if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
             isNavigating = false;
-
-            if (currentPositionMarker) {
-                currentPositionMarker.setMap(null);
-                currentPositionMarker = null;
-            }
-            if (currentPositionCircle) {
-                currentPositionCircle.setMap(null);
-                currentPositionCircle = null;
-            }
-
+            if (currentPositionMarker) { currentPositionMarker.setMap(null); currentPositionMarker = null; }
+            if (currentPositionCircle) { currentPositionCircle.setMap(null); currentPositionCircle = null; }
             exitNavigationMode();
         }
 
@@ -1836,105 +993,35 @@
             document.getElementById('stampRallySection').classList.add('hidden');
             document.getElementById('routeSwitch').classList.add('hidden');
             document.getElementById('routeInfo').classList.add('hidden');
-
             document.getElementById('navModePanel').classList.remove('hidden');
             document.getElementById('map').classList.add('nav-mode');
-            
-            setTimeout(() => {
-                google.maps.event.trigger(map, 'resize');
-                if (userLocation) {
-                    map.setCenter(userLocation);
-                    map.setZoom(17);
-                }
-            }, 100);
+            setTimeout(() => { google.maps.event.trigger(map, 'resize'); if (userLocation) { map.setCenter(userLocation); map.setZoom(17); } }, 100);
         }
 
         function exitNavigationMode() {
             document.getElementById('modeSection').classList.remove('hidden');
-            
-            if (currentMode === 'stamp') {
-                document.getElementById('stampRallySection').classList.remove('hidden');
-            } else {
-                document.getElementById('routeCreationSection').classList.remove('hidden');
-            }
-            
-            if (allRoutes.length > 1) {
-                document.getElementById('routeSwitch').classList.remove('hidden');
-            }
+            if (currentMode === 'stamp') document.getElementById('stampRallySection').classList.remove('hidden');
+            else document.getElementById('routeCreationSection').classList.remove('hidden');
+            if (allRoutes.length > 1) document.getElementById('routeSwitch').classList.remove('hidden');
             document.getElementById('routeInfo').classList.remove('hidden');
-
             document.getElementById('navModePanel').classList.add('hidden');
             document.getElementById('map').classList.remove('nav-mode');
-            
-            setTimeout(() => {
-                google.maps.event.trigger(map, 'resize');
-            }, 100);
+            setTimeout(() => google.maps.event.trigger(map, 'resize'), 100);
         }
 
-        function updateCurrentPosition(position) {
-            const currentPos = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-
-            if (currentPositionMarker) {
-                currentPositionMarker.setPosition(currentPos);
-            } else {
-                currentPositionMarker = new google.maps.Marker({
-                    position: currentPos,
-                    map: map,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 10,
-                        fillColor: '#4285F4',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 3
-                    },
-                    zIndex: 999
-                });
-            }
-
-            if (currentPositionCircle) {
-                currentPositionCircle.setCenter(currentPos);
-            } else {
-                currentPositionCircle = new google.maps.Circle({
-                    strokeColor: '#4285F4',
-                    strokeOpacity: 0.4,
-                    strokeWeight: 2,
-                    fillColor: '#4285F4',
-                    fillOpacity: 0.15,
-                    map: map,
-                    center: currentPos,
-                    radius: position.coords.accuracy || 20,
-                    zIndex: 998
-                });
-            }
-
-            if (followMode) {
-                map.panTo(currentPos);
-            }
-
-            updateNavigationStats(currentPos);
+        function updateCurrentPosition(pos) {
+            const cur = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            if (currentPositionMarker) currentPositionMarker.setPosition(cur);
+            else currentPositionMarker = new google.maps.Marker({ position: cur, map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4285F4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }, zIndex: 999 });
+            if (currentPositionCircle) currentPositionCircle.setCenter(cur);
+            else currentPositionCircle = new google.maps.Circle({ strokeColor: '#4285F4', strokeOpacity: 0.4, strokeWeight: 2, fillColor: '#4285F4', fillOpacity: 0.15, map, center: cur, radius: pos.coords.accuracy || 20, zIndex: 998 });
+            if (followMode) map.panTo(cur);
+            const walked = calculateDistance(startPosition, cur);
+            document.getElementById('navWalkedDistance').textContent = walked.toFixed(2);
+            document.getElementById('navRemainingDistance').textContent = Math.max(0, (totalRouteDistance / 1000) - walked).toFixed(2);
         }
 
-        function handlePositionError(error) {
-            console.error('位置情報エラー:', error);
-            document.getElementById('navStatus').textContent = '⚠️ GPS信号が弱いです';
-            document.getElementById('navStatus').className = 'text-sm text-yellow-600 font-medium';
-        }
-
-        function updateNavigationStats(currentPos) {
-            const walkedDistance = calculateDistance(startPosition, currentPos);
-            document.getElementById('navWalkedDistance').textContent = walkedDistance.toFixed(2);
-
-            const remainingDistance = Math.max(0, (totalRouteDistance / 1000) - walkedDistance);
-            document.getElementById('navRemainingDistance').textContent = remainingDistance.toFixed(2);
-        }
-
-        function toggleFollowMode() {
-            followMode = document.getElementById('followModeToggle').checked;
-        }
+        function toggleFollowMode() { followMode = document.getElementById('followModeToggle').checked; }
     </script>
 </body>
 </html>
