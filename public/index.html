@@ -158,7 +158,7 @@
                 <div id="rallyList" class="space-y-3"></div>
             </div>
 
-            <!-- スタンプラリー詳細 -->
+            <!-- ルート作成モード -->
             <div id="rallyDetailSection" class="bg-white rounded-2xl shadow-lg p-6 mb-6 hidden">
                 <div class="flex items-center justify-between mb-4">
                     <button onclick="closeRallyDetail()" class="text-gray-500 hover:text-gray-700">← 戻る</button>
@@ -166,11 +166,33 @@
                 </div>
                 <h2 id="rallyDetailTitle" class="text-xl font-bold mb-2"></h2>
                 <p id="rallyDetailDesc" class="text-sm text-gray-600 mb-4"></p>
+                
+                <!-- ルート作成モードトグル -->
+                <div class="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-xl">
+                    <span class="font-medium text-blue-800">🗺️ 複数選択してルート作成</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="routeSelectMode" class="sr-only peer" onchange="toggleRouteSelectMode()">
+                        <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                </div>
+                
+                <!-- 選択時のアクションバー -->
+                <div id="selectedActionBar" class="hidden mb-4 p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl text-white">
+                    <div class="flex items-center justify-between">
+                        <span id="selectedCount" class="font-bold">0件選択中</span>
+                        <div class="flex gap-2">
+                            <button onclick="createRouteFromSelected()" class="px-3 py-1 bg-white text-blue-600 rounded-lg text-sm font-bold">ルート作成</button>
+                            <button onclick="openSelectedInGoogleMaps()" class="px-3 py-1 bg-white text-red-500 rounded-lg text-sm font-bold">📍Maps</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="flex gap-2 mb-4">
                     <button onclick="sortSpots('default')" class="sort-btn active px-3 py-1 text-sm rounded-lg bg-gray-100">番号順</button>
                     <button onclick="sortSpots('distance')" class="sort-btn px-3 py-1 text-sm rounded-lg bg-gray-100">距離順</button>
                     <button onclick="sortSpots('unvisited')" class="sort-btn px-3 py-1 text-sm rounded-lg bg-gray-100">未訪問優先</button>
                 </div>
+                
                 <div id="spotList" class="space-y-3"></div>
                 
                 <!-- Googleマップで開くボタン -->
@@ -303,6 +325,8 @@
         let currentRallyKey = null;
         let currentSortMode = 'default';
         let stampMarkers = [];
+        let routeSelectMode = false;
+        let selectedSpots = [];  // {id, lat, lng, name} の配列
 
         // ミッションデータ
         const missions = [
@@ -468,6 +492,10 @@
 
         function closeRallyDetail() {
             currentRallyKey = null;
+            routeSelectMode = false;
+            selectedSpots = [];
+            document.getElementById('routeSelectMode').checked = false;
+            document.getElementById('selectedActionBar').classList.add('hidden');
             document.getElementById('rallyDetailSection').classList.add('hidden');
             clearStampMarkers();
             renderRallyList();
@@ -490,26 +518,52 @@
             spots.forEach(spot => {
                 const isVisited = visited.includes(spot.id);
                 const distance = userLocation ? calculateDistance(userLocation, {lat: spot.lat, lng: spot.lng}) : null;
+                const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`;
+                const isSelected = selectedSpots.some(s => s.id === spot.id);
                 
                 const card = document.createElement('div');
-                card.className = `p-4 rounded-xl border-2 ${isVisited ? 'stamp-visited' : 'stamp-unvisited'}`;
-                card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xl">${isVisited ? '✅' : '⬜'}</span>
-                                <span class="font-bold">${spot.name}</span>
+                card.className = `p-4 rounded-xl border-2 ${isVisited ? 'stamp-visited' : 'stamp-unvisited'} ${isSelected ? 'ring-2 ring-blue-500' : ''}`;
+                
+                if (routeSelectMode) {
+                    // 選択モード時
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" 
+                                id="spot_${spot.id}" 
+                                ${isSelected ? 'checked' : ''} 
+                                onchange="toggleSpotSelection(${spot.id}, ${spot.lat}, ${spot.lng}, '${spot.name.replace(/'/g, "\\'")}')"
+                                class="w-6 h-6 accent-blue-500 cursor-pointer flex-shrink-0">
+                            <label for="spot_${spot.id}" class="flex-1 cursor-pointer">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">${isVisited ? '✅' : '⬜'}</span>
+                                    <span class="font-bold">${spot.name}</span>
+                                </div>
+                                ${spot.detail ? `<div class="text-sm text-gray-600 ml-7">${spot.detail}</div>` : ''}
+                                ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
+                            </label>
+                        </div>
+                    `;
+                } else {
+                    // 通常モード時
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">${isVisited ? '✅' : '⬜'}</span>
+                                    <span class="font-bold">${spot.name}</span>
+                                </div>
+                                ${spot.detail ? `<div class="text-sm text-gray-600 ml-7">${spot.detail}</div>` : ''}
+                                ${spot.blessing ? `<div class="text-xs text-purple-600 ml-7">🙏 ${spot.blessing}</div>` : ''}
+                                ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
                             </div>
-                            ${spot.detail ? `<div class="text-sm text-gray-600 ml-7">${spot.detail}</div>` : ''}
-                            ${spot.blessing ? `<div class="text-xs text-purple-600 ml-7">🙏 ${spot.blessing}</div>` : ''}
-                            ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
+                            <div class="flex flex-col gap-1">
+                                ${!isVisited ? `<button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600">チェックイン</button>` : ''}
+                                <button onclick="createRouteToSpot(${spot.lat}, ${spot.lng}, '${spot.name.replace(/'/g, "\\'")}')" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600">ルート</button>
+                                <a href="${googleMapUrl}" target="_blank" class="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 text-center">📍Maps</a>
+                            </div>
                         </div>
-                        <div class="flex flex-col gap-1">
-                            ${!isVisited ? `<button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600">チェックイン</button>` : ''}
-                            <button onclick="createRouteToSpot(${spot.lat}, ${spot.lng}, '${spot.name.replace(/'/g, "\\'")}')" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600">ルート作成</button>
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
                 container.appendChild(card);
             });
         }
@@ -530,6 +584,8 @@
             
             rally.spots.forEach(spot => {
                 const isVisited = visited.includes(spot.id);
+                const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`;
+                
                 const marker = new google.maps.Marker({
                     position: {lat: spot.lat, lng: spot.lng},
                     map: map,
@@ -538,7 +594,17 @@
                 });
                 
                 const infoWindow = new google.maps.InfoWindow({
-                    content: `<div style="padding:8px;"><strong>${spot.name}</strong><br>${spot.detail || ''}<br>${isVisited ? '✅ 訪問済み' : '⬜ 未訪問'}</div>`
+                    content: `
+                        <div style="padding:8px; min-width:180px;">
+                            <strong>${spot.name}</strong><br>
+                            <span style="font-size:12px;color:#666;">${spot.detail || ''}</span><br>
+                            <span style="font-size:12px;">${isVisited ? '✅ 訪問済み' : '⬜ 未訪問'}</span>
+                            <hr style="margin:8px 0;border:0;border-top:1px solid #eee;">
+                            <a href="${googleMapUrl}" target="_blank" style="display:block;text-align:center;color:#EA4335;text-decoration:none;font-weight:bold;font-size:12px;">
+                                📍 Googleマップで開く
+                            </a>
+                        </div>
+                    `
                 });
                 marker.addListener('click', () => infoWindow.open(map, marker));
                 stampMarkers.push(marker);
@@ -685,6 +751,145 @@
             // スタンプラリー詳細を閉じてルート作成画面へ
             document.getElementById('rallyDetailSection').classList.add('hidden');
             alert(`${name}への経路を作成します。\n歩数を設定して「ルートを作成」を押してください。`);
+        }
+
+        // ルート選択モードのトグル
+        function toggleRouteSelectMode() {
+            routeSelectMode = document.getElementById('routeSelectMode').checked;
+            if (!routeSelectMode) {
+                selectedSpots = [];
+            }
+            updateSelectedUI();
+            renderSpotList(currentRallyKey, currentSortMode);
+        }
+
+        // スポット選択の切り替え
+        function toggleSpotSelection(id, lat, lng, name) {
+            const index = selectedSpots.findIndex(s => s.id === id);
+            if (index > -1) {
+                selectedSpots.splice(index, 1);
+            } else {
+                selectedSpots.push({ id, lat, lng, name });
+            }
+            updateSelectedUI();
+        }
+
+        // 選択UIの更新
+        function updateSelectedUI() {
+            const actionBar = document.getElementById('selectedActionBar');
+            const countEl = document.getElementById('selectedCount');
+            
+            if (routeSelectMode && selectedSpots.length > 0) {
+                actionBar.classList.remove('hidden');
+                countEl.textContent = `${selectedSpots.length}件選択中`;
+            } else {
+                actionBar.classList.add('hidden');
+            }
+        }
+
+        // 選択をクリア
+        function clearSelectedSpots() {
+            selectedSpots = [];
+            updateSelectedUI();
+            renderSpotList(currentRallyKey, currentSortMode);
+        }
+
+        // 選択したスポットでルート作成
+        function createRouteFromSelected() {
+            if (selectedSpots.length === 0) {
+                alert('スポットを選択してください');
+                return;
+            }
+            
+            // 距離順にソート（最短巡回）
+            let sortedSpots = [...selectedSpots];
+            if (userLocation) {
+                // 貪欲法で最短順に並べ替え
+                const ordered = [];
+                let current = userLocation;
+                const remaining = [...sortedSpots];
+                
+                while (remaining.length > 0) {
+                    let nearestIdx = 0;
+                    let nearestDist = Infinity;
+                    for (let i = 0; i < remaining.length; i++) {
+                        const dist = calculateDistance(current, { lat: remaining[i].lat, lng: remaining[i].lng });
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            nearestIdx = i;
+                        }
+                    }
+                    const nearest = remaining.splice(nearestIdx, 1)[0];
+                    ordered.push(nearest);
+                    current = { lat: nearest.lat, lng: nearest.lng };
+                }
+                sortedSpots = ordered;
+            }
+            
+            // 片道モードに切り替え、最後のスポットを目的地に
+            setMode('oneway');
+            const destination = sortedSpots[sortedSpots.length - 1];
+            selectDestination({ name: destination.name, lat: destination.lat, lng: destination.lng });
+            
+            // 経由地を保存（後でルート作成時に使用）
+            window.selectedWaypoints = sortedSpots.slice(0, -1);
+            
+            document.getElementById('rallyDetailSection').classList.add('hidden');
+            
+            const waypointNames = sortedSpots.map(s => s.name).join(' → ');
+            alert(`${sortedSpots.length}箇所を巡るルートを作成します。\n\n${waypointNames}\n\n歩数を設定して「ルートを作成」を押してください。`);
+        }
+
+        // 選択したスポットをGoogleマップで開く
+        function openSelectedInGoogleMaps() {
+            if (selectedSpots.length === 0) {
+                alert('スポットを選択してください');
+                return;
+            }
+            
+            // 距離順にソート
+            let sortedSpots = [...selectedSpots];
+            if (userLocation) {
+                const ordered = [];
+                let current = userLocation;
+                const remaining = [...sortedSpots];
+                
+                while (remaining.length > 0) {
+                    let nearestIdx = 0;
+                    let nearestDist = Infinity;
+                    for (let i = 0; i < remaining.length; i++) {
+                        const dist = calculateDistance(current, { lat: remaining[i].lat, lng: remaining[i].lng });
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            nearestIdx = i;
+                        }
+                    }
+                    const nearest = remaining.splice(nearestIdx, 1)[0];
+                    ordered.push(nearest);
+                    current = { lat: nearest.lat, lng: nearest.lng };
+                }
+                sortedSpots = ordered;
+            }
+            
+            const origin = userLocation ? `${userLocation.lat},${userLocation.lng}` : `${sortedSpots[0].lat},${sortedSpots[0].lng}`;
+            const maxWaypoints = 10;
+            
+            if (sortedSpots.length === 1) {
+                const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${sortedSpots[0].lat},${sortedSpots[0].lng}&travelmode=walking`;
+                window.open(url, '_blank');
+            } else if (sortedSpots.length <= maxWaypoints + 1) {
+                const waypoints = sortedSpots.slice(0, -1).map(s => `${s.lat},${s.lng}`).join('|');
+                const destination = sortedSpots[sortedSpots.length - 1];
+                const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination.lat},${destination.lng}&waypoints=${waypoints}&travelmode=walking`;
+                window.open(url, '_blank');
+            } else {
+                const limitedSpots = sortedSpots.slice(0, maxWaypoints + 1);
+                const waypoints = limitedSpots.slice(0, -1).map(s => `${s.lat},${s.lng}`).join('|');
+                const destination = limitedSpots[limitedSpots.length - 1];
+                const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination.lat},${destination.lng}&waypoints=${waypoints}&travelmode=walking`;
+                alert(`選択が多いため、近い順に${maxWaypoints + 1}箇所を表示します。`);
+                window.open(url, '_blank');
+            }
         }
 
         // Googleマップでスタンプラリーを開く
@@ -901,9 +1106,16 @@
                     if (allRoutes.length > 0) { displayRoute(0); if (allRoutes.length > 1) showRouteSelection(); else document.getElementById('routeSwitch').classList.add('hidden'); }
                     else alert('ルート作成に失敗しました');
                 } else {
-                    const directDist = calculateDistance(userLocation, selectedDestination);
-                    const detour = targetDist - directDist;
-                    let waypoints = detour > 0 ? generateDetourWaypoints(userLocation, selectedDestination, detour) : [];
+                    // 複数スポット選択時は経由地として使用
+                    let waypoints = [];
+                    if (window.selectedWaypoints && window.selectedWaypoints.length > 0) {
+                        waypoints = window.selectedWaypoints.map(s => ({ lat: s.lat, lng: s.lng }));
+                        window.selectedWaypoints = null; // 使用後クリア
+                    } else {
+                        const directDist = calculateDistance(userLocation, selectedDestination);
+                        const detour = targetDist - directDist;
+                        waypoints = detour > 0 ? generateDetourWaypoints(userLocation, selectedDestination, detour) : [];
+                    }
                     const response = await fetch('/api/directions', {
                         method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ origin: userLocation, destination: selectedDestination, waypoints, avoidHighways, optimizeWaypoints: false })
