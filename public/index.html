@@ -295,6 +295,26 @@
         </div>
     </div>
 
+    <!-- ルート作成選択モーダル -->
+    <div id="routeChoiceModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h3 id="routeChoiceTitle" class="text-lg font-bold mb-2 text-center"></h3>
+            <p id="routeChoiceDesc" class="text-sm text-gray-600 mb-4 text-center"></p>
+            <p class="text-center text-gray-700 mb-4">どちらのルートを作成しますか？</p>
+            <div class="space-y-3">
+                <button onclick="executeRouteChoice('shortest')" class="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-xl transition-all">
+                    🚀 最短ルート
+                </button>
+                <button onclick="executeRouteChoice('steps')" class="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold hover:shadow-xl transition-all">
+                    🚶 歩数を指定
+                </button>
+                <button onclick="closeRouteChoiceModal()" class="w-full py-2 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all">
+                    キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDYFFfCe_7Ry15jh7J1n8gw7fF4JLJohxE&libraries=geometry,places"></script>
     <script>
         // グローバル変数
@@ -746,11 +766,53 @@
 
         // 選択したスポットへルート作成
         function createRouteToSpot(lat, lng, name) {
-            setMode('oneway');
-            selectDestination({ name: name, lat: lat, lng: lng });
-            // スタンプラリー詳細を閉じてルート作成画面へ
-            document.getElementById('rallyDetailSection').classList.add('hidden');
-            alert(`${name}への経路を作成します。\n歩数を設定して「ルートを作成」を押してください。`);
+            // 目的地を事前に設定
+            window.pendingRoute = { lat, lng, name, type: 'single' };
+            
+            // カスタムダイアログ表示
+            document.getElementById('routeChoiceTitle').textContent = `${name}へのルート作成`;
+            document.getElementById('routeChoiceDesc').textContent = '';
+            document.getElementById('routeChoiceModal').classList.remove('hidden');
+        }
+        
+        // ダイアログを閉じる
+        function closeRouteChoiceModal() {
+            document.getElementById('routeChoiceModal').classList.add('hidden');
+            window.pendingRoute = null;
+        }
+        
+        // ルート選択実行
+        function executeRouteChoice(choice) {
+            const pending = window.pendingRoute;
+            if (!pending) return;
+            
+            document.getElementById('routeChoiceModal').classList.add('hidden');
+            
+            if (pending.type === 'single') {
+                setMode('oneway');
+                selectDestination({ name: pending.name, lat: pending.lat, lng: pending.lng });
+                document.getElementById('rallyDetailSection').classList.add('hidden');
+                
+                if (choice === 'shortest') {
+                    window.useShortestRoute = true;
+                    createRoute();
+                }
+                // 'steps'の場合は何もしない（画面遷移済み）
+            } else if (pending.type === 'multi') {
+                const sortedSpots = pending.sortedSpots;
+                setMode('oneway');
+                const destination = sortedSpots[sortedSpots.length - 1];
+                selectDestination({ name: destination.name, lat: destination.lat, lng: destination.lng });
+                window.selectedWaypoints = sortedSpots.slice(0, -1);
+                document.getElementById('rallyDetailSection').classList.add('hidden');
+                
+                if (choice === 'shortest') {
+                    window.useShortestRoute = true;
+                    createRoute();
+                }
+            }
+            
+            window.pendingRoute = null;
         }
 
         // ルート選択モードのトグル
@@ -826,18 +888,13 @@
                 sortedSpots = ordered;
             }
             
-            // 片道モードに切り替え、最後のスポットを目的地に
-            setMode('oneway');
-            const destination = sortedSpots[sortedSpots.length - 1];
-            selectDestination({ name: destination.name, lat: destination.lat, lng: destination.lng });
-            
-            // 経由地を保存（後でルート作成時に使用）
-            window.selectedWaypoints = sortedSpots.slice(0, -1);
-            
-            document.getElementById('rallyDetailSection').classList.add('hidden');
-            
             const waypointNames = sortedSpots.map(s => s.name).join(' → ');
-            alert(`${sortedSpots.length}箇所を巡るルートを作成します。\n\n${waypointNames}\n\n歩数を設定して「ルートを作成」を押してください。`);
+            
+            // カスタムダイアログ表示
+            window.pendingRoute = { type: 'multi', sortedSpots };
+            document.getElementById('routeChoiceTitle').textContent = `${sortedSpots.length}箇所を巡るルート作成`;
+            document.getElementById('routeChoiceDesc').textContent = waypointNames;
+            document.getElementById('routeChoiceModal').classList.remove('hidden');
         }
 
         // 選択したスポットをGoogleマップで開く
@@ -1108,7 +1165,16 @@
                 } else {
                     // 複数スポット選択時は経由地として使用
                     let waypoints = [];
-                    if (window.selectedWaypoints && window.selectedWaypoints.length > 0) {
+                    
+                    // 最短ルートフラグがある場合は寄り道なし
+                    if (window.useShortestRoute) {
+                        // 選択された経由地のみ使用（寄り道なし）
+                        if (window.selectedWaypoints && window.selectedWaypoints.length > 0) {
+                            waypoints = window.selectedWaypoints.map(s => ({ lat: s.lat, lng: s.lng }));
+                        }
+                        window.useShortestRoute = false; // フラグリセット
+                        window.selectedWaypoints = null;
+                    } else if (window.selectedWaypoints && window.selectedWaypoints.length > 0) {
                         waypoints = window.selectedWaypoints.map(s => ({ lat: s.lat, lng: s.lng }));
                         window.selectedWaypoints = null; // 使用後クリア
                     } else {
