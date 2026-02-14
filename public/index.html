@@ -320,6 +320,8 @@
         // グローバル変数
         let map = null;
         let userLocation = null;
+        let userLocationMarker = null;
+        let locationWatchId = null;
         let currentSteps = 5000;
         let currentRoute = null;
         let currentPolyline = null;
@@ -380,15 +382,58 @@
 
         function getLocation() {
             if (navigator.geolocation) {
+                // 最初の位置を取得してから画面表示
                 navigator.geolocation.getCurrentPosition(
                     async (pos) => {
                         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                         await loadStampRallies();
                         showMainScreen();
+                        
+                        // 継続的に位置を監視
+                        startLocationWatch();
                     },
                     () => alert('位置情報取得に失敗しました')
                 );
             }
+        }
+        
+        function startLocationWatch() {
+            if (locationWatchId !== null) return;
+            
+            locationWatchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    
+                    // 現在地マーカーを更新
+                    if (userLocationMarker) {
+                        userLocationMarker.setPosition(userLocation);
+                    }
+                    
+                    // スタンプラリー詳細画面の距離表示を更新
+                    if (currentRallyKey && !document.getElementById('rallyDetailSection').classList.contains('hidden')) {
+                        updateSpotDistances();
+                    }
+                },
+                () => {},
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+            );
+        }
+        
+        // スポットの距離表示を更新
+        function updateSpotDistances() {
+            const distanceElements = document.querySelectorAll('.spot-distance');
+            distanceElements.forEach(el => {
+                const lat = parseFloat(el.dataset.lat);
+                const lng = parseFloat(el.dataset.lng);
+                if (lat && lng && userLocation) {
+                    const distance = calculateDistance(userLocation, {lat, lng});
+                    if (distance < 1) {
+                        el.textContent = `${(distance * 1000).toFixed(0)}m`;
+                    } else {
+                        el.textContent = `${distance.toFixed(1)}km`;
+                    }
+                }
+            });
         }
 
         function showMainScreen() {
@@ -400,11 +445,13 @@
                 geocoder = new google.maps.Geocoder();
                 initAutocomplete();
 
-                new google.maps.Marker({
+                // 現在地マーカー（リアルタイム更新対応）
+                userLocationMarker = new google.maps.Marker({
                     position: userLocation,
                     map: map,
                     title: '現在地',
-                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4285F4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 },
+                    zIndex: 999
                 });
 
                 loadSavedDestinations();
@@ -546,6 +593,7 @@
                 
                 if (routeSelectMode) {
                     // 選択モード時
+                    const distanceText = distance !== null ? (distance < 1 ? `${(distance * 1000).toFixed(0)}m` : `${distance.toFixed(1)}km`) : '';
                     card.innerHTML = `
                         <div class="flex items-center gap-3">
                             <input type="checkbox" 
@@ -559,12 +607,13 @@
                                     <span class="font-bold">${spot.name}</span>
                                 </div>
                                 ${spot.detail ? `<div class="text-sm text-gray-600 ml-7">${spot.detail}</div>` : ''}
-                                ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
+                                ${distance !== null ? `<div class="text-xs text-gray-500 ml-7 spot-distance" data-lat="${spot.lat}" data-lng="${spot.lng}">📍 ${distanceText}</div>` : ''}
                             </label>
                         </div>
                     `;
                 } else {
                     // 通常モード時
+                    const distanceText = distance !== null ? (distance < 1 ? `${(distance * 1000).toFixed(0)}m` : `${distance.toFixed(1)}km`) : '';
                     card.innerHTML = `
                         <div class="flex items-center justify-between">
                             <div class="flex-1">
@@ -574,7 +623,7 @@
                                 </div>
                                 ${spot.detail ? `<div class="text-sm text-gray-600 ml-7">${spot.detail}</div>` : ''}
                                 ${spot.blessing ? `<div class="text-xs text-purple-600 ml-7">🙏 ${spot.blessing}</div>` : ''}
-                                ${distance !== null ? `<div class="text-xs text-gray-500 ml-7">📍 ${(distance * 1000).toFixed(0)}m</div>` : ''}
+                                ${distance !== null ? `<div class="text-xs text-gray-500 ml-7 spot-distance" data-lat="${spot.lat}" data-lng="${spot.lng}">📍 ${distanceText}</div>` : ''}
                             </div>
                             <div class="flex flex-col gap-1">
                                 ${!isVisited ? `<button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600">チェックイン</button>` : ''}
