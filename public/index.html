@@ -149,11 +149,7 @@
             <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 class="font-medium mb-3">カテゴリ</h2>
                 <div class="flex flex-wrap gap-2" id="categoryButtons">
-                    <button onclick="filterByCategory('all')" class="category-btn active px-4 py-2 rounded-full border-2 transition-all text-sm font-medium">🎯 すべて</button>
-                    <button onclick="filterByCategory('temples')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">⛩️ 神社仏閣</button>
-                    <button onclick="filterByCategory('public')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🏛️ 公共施設</button>
-                    <button onclick="filterByCategory('sightseeing')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🏯 観光</button>
-                    <button onclick="filterByCategory('taiwan')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🇹🇼 台湾</button>
+                    <!-- 動的に生成される -->
                 </div>
             </div>
 
@@ -373,15 +369,51 @@
         ];
 
         // 初期化
+        let categoryConfig = {}; // カテゴリ設定
+        
         async function loadStampRallies() {
             try {
                 const response = await fetch('/data/stamp-rallies.json');
-                stampRallies = await response.json();
+                const data = await response.json();
+                
+                // カテゴリ設定を抽出
+                if (data._categories) {
+                    categoryConfig = data._categories;
+                    delete data._categories;
+                }
+                
+                stampRallies = data;
                 console.log('スタンプラリーデータ読み込み完了:', Object.keys(stampRallies).length + '件');
             } catch (error) {
                 console.error('スタンプラリーデータ読み込みエラー:', error);
-                // フォールバック: 空のオブジェクト
                 stampRallies = {};
+            }
+        }
+        
+        // カテゴリボタンを動的生成
+        function renderCategoryButtons() {
+            const container = document.getElementById('categoryButtons');
+            container.innerHTML = '';
+            
+            // 「すべて」ボタン
+            const allBtn = document.createElement('button');
+            allBtn.className = 'category-btn active px-4 py-2 rounded-full border-2 transition-all text-sm font-medium';
+            allBtn.textContent = '🎯 すべて';
+            allBtn.dataset.category = 'all';
+            allBtn.onclick = () => filterByCategory('all');
+            container.appendChild(allBtn);
+            
+            // カテゴリボタンをorder順にソートして生成
+            const sortedCategories = Object.entries(categoryConfig)
+                .sort((a, b) => (a[1].order || 99) - (b[1].order || 99));
+            
+            for (const [key, config] of sortedCategories) {
+                const btn = document.createElement('button');
+                btn.className = 'category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium';
+                btn.textContent = `${config.icon} ${config.name}`;
+                btn.dataset.category = key;
+                btn.onclick = () => filterByCategory(key);
+                container.appendChild(btn);
             }
         }
 
@@ -485,6 +517,7 @@
                 });
 
                 loadSavedDestinations();
+                renderCategoryButtons();
                 renderRallyList();
             }, 100);
         }
@@ -562,13 +595,22 @@
             }
         }
 
+        let currentCategory = 'all'; // 現在選択中のカテゴリ
+        
         function filterByCategory(category) {
+            currentCategory = category;
+            
+            // ボタンのアクティブ状態を更新
             document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.remove('active');
-                btn.classList.add('border-gray-200');
+                if (btn.dataset.category === category) {
+                    btn.classList.add('active');
+                    btn.classList.remove('border-gray-200');
+                } else {
+                    btn.classList.remove('active');
+                    btn.classList.add('border-gray-200');
+                }
             });
-            event.target.classList.add('active');
-            event.target.classList.remove('border-gray-200');
+            
             renderRallyList(category);
         }
 
