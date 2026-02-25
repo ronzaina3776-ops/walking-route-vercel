@@ -40,6 +40,9 @@
             <button onclick="getLocation()" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl hover:bg-green-600 transition-colors">
                 📍 現在地を使う
             </button>
+            <button onclick="startDemoMode()" class="w-full mt-3 bg-gray-100 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-200 transition-colors">
+                🎮 デモモード（大阪駅）
+            </button>
         </div>
     </div>
 
@@ -149,6 +152,8 @@
                     <button onclick="filterByCategory('all')" class="category-btn active px-4 py-2 rounded-full border-2 transition-all text-sm font-medium">🎯 すべて</button>
                     <button onclick="filterByCategory('temples')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">⛩️ 神社仏閣</button>
                     <button onclick="filterByCategory('public')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🏛️ 公共施設</button>
+                    <button onclick="filterByCategory('sightseeing')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🏯 観光</button>
+                    <button onclick="filterByCategory('taiwan')" class="category-btn px-4 py-2 rounded-full border-2 border-gray-200 transition-all text-sm font-medium">🇹🇼 台湾</button>
                 </div>
             </div>
 
@@ -392,9 +397,34 @@
                         // 継続的に位置を監視
                         startLocationWatch();
                     },
-                    () => alert('位置情報取得に失敗しました')
+                    () => {
+                        // 位置情報取得失敗時はデモモードを提案
+                        if (confirm('位置情報を取得できませんでした。\nデモモード（大阪駅）で起動しますか？')) {
+                            startDemoMode();
+                        }
+                    }
                 );
+            } else {
+                if (confirm('このブラウザは位置情報に対応していません。\nデモモード（大阪駅）で起動しますか？')) {
+                    startDemoMode();
+                }
             }
+        }
+        
+        // デモモード（位置情報なしで使用）
+        async function startDemoMode() {
+            // 大阪駅をデフォルト位置に設定
+            userLocation = { lat: 34.7024, lng: 135.4959 };
+            await loadStampRallies();
+            showMainScreen();
+            
+            // デモモード表示
+            setTimeout(() => {
+                const header = document.querySelector('#mainScreen .bg-white p');
+                if (header) {
+                    header.innerHTML = 'Google Maps版 <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">🎮 デモモード</span>';
+                }
+            }, 200);
         }
         
         function startLocationWatch() {
