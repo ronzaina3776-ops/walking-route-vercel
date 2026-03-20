@@ -240,52 +240,104 @@
         </div>
 
         <!-- コンパスモード -->
-        <div id="compassModePanel" class="bg-white rounded-2xl shadow-lg p-6 hidden">
+        <div id="compassModePanel" class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl p-6 hidden text-white">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold">🧭 コンパス</h2>
-                <button onclick="stopCompass()" class="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+                <button onclick="stopCompass()" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             
             <!-- 目的地名 -->
-            <div id="compassDestName" class="text-center text-lg font-bold mb-4 text-gray-800"></div>
+            <div id="compassDestName" class="text-center text-xl font-bold mb-6 text-cyan-400"></div>
             
             <!-- コンパス表示 -->
             <div class="flex justify-center mb-6">
-                <div class="relative w-64 h-64">
-                    <!-- 外枠 -->
-                    <div class="absolute inset-0 rounded-full border-4 border-gray-200"></div>
-                    <!-- 方位表示 -->
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <div class="absolute top-2 text-gray-400 font-bold">N</div>
-                        <div class="absolute bottom-2 text-gray-400 font-bold">S</div>
-                        <div class="absolute left-2 text-gray-400 font-bold">W</div>
-                        <div class="absolute right-2 text-gray-400 font-bold">E</div>
-                    </div>
-                    <!-- 矢印 -->
-                    <div id="compassArrow" class="absolute inset-0 flex items-center justify-center transition-transform duration-300">
-                        <svg width="120" height="120" viewBox="0 0 100 100">
-                            <polygon points="50,10 35,60 50,50 65,60" fill="#ef4444" stroke="#b91c1c" stroke-width="2"/>
-                            <circle cx="50" cy="50" r="8" fill="#374151"/>
+                <div class="relative w-72 h-72">
+                    <!-- 外側のリング -->
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
+                        <!-- 背景グラデーション -->
+                        <defs>
+                            <linearGradient id="compassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#1e293b"/>
+                                <stop offset="100%" style="stop-color:#0f172a"/>
+                            </linearGradient>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        
+                        <!-- メインサークル -->
+                        <circle cx="100" cy="100" r="95" fill="url(#compassGrad)" stroke="#334155" stroke-width="2"/>
+                        <circle cx="100" cy="100" r="85" fill="none" stroke="#475569" stroke-width="1"/>
+                        
+                        <!-- 目盛り -->
+                        <g stroke="#64748b" stroke-width="1">
+                            <!-- 主要方位 -->
+                            <line x1="100" y1="10" x2="100" y2="25"/>
+                            <line x1="100" y1="175" x2="100" y2="190"/>
+                            <line x1="10" y1="100" x2="25" y2="100"/>
+                            <line x1="175" y1="100" x2="190" y2="100"/>
+                            <!-- 副方位 -->
+                            <line x1="163" y1="37" x2="155" y2="45"/>
+                            <line x1="163" y1="163" x2="155" y2="155"/>
+                            <line x1="37" y1="163" x2="45" y2="155"/>
+                            <line x1="37" y1="37" x2="45" y2="45"/>
+                        </g>
+                        
+                        <!-- 方位文字 -->
+                        <text x="100" y="38" text-anchor="middle" fill="#f43f5e" font-weight="bold" font-size="16">N</text>
+                        <text x="100" y="172" text-anchor="middle" fill="#94a3b8" font-weight="bold" font-size="12">S</text>
+                        <text x="172" y="104" text-anchor="middle" fill="#94a3b8" font-weight="bold" font-size="12">E</text>
+                        <text x="28" y="104" text-anchor="middle" fill="#94a3b8" font-weight="bold" font-size="12">W</text>
+                    </svg>
+                    
+                    <!-- 回転する矢印 -->
+                    <div id="compassArrow" class="absolute inset-0 flex items-center justify-center transition-transform duration-200 ease-out">
+                        <svg width="200" height="200" viewBox="0 0 200 200">
+                            <defs>
+                                <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#22d3ee"/>
+                                    <stop offset="100%" style="stop-color:#0891b2"/>
+                                </linearGradient>
+                                <filter id="arrowShadow">
+                                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#22d3ee" flood-opacity="0.5"/>
+                                </filter>
+                            </defs>
+                            <!-- 矢印本体 -->
+                            <path d="M100,30 L115,100 L100,90 L85,100 Z" fill="url(#arrowGrad)" filter="url(#arrowShadow)"/>
+                            <path d="M100,170 L115,100 L100,110 L85,100 Z" fill="#475569"/>
+                            <!-- 中央の円 -->
+                            <circle cx="100" cy="100" r="12" fill="#1e293b" stroke="#22d3ee" stroke-width="2"/>
+                            <circle cx="100" cy="100" r="4" fill="#22d3ee"/>
                         </svg>
                     </div>
                 </div>
             </div>
             
             <!-- 距離表示 -->
-            <div class="text-center mb-6">
-                <div id="compassDistance" class="text-4xl font-bold text-green-600">---</div>
-                <div class="text-gray-500">目的地まで</div>
+            <div class="text-center mb-4">
+                <div id="compassDistance" class="text-5xl font-bold text-cyan-400 tracking-tight">---</div>
+                <div class="text-slate-400 text-sm mt-1">目的地まで</div>
             </div>
             
             <!-- 方角表示 -->
-            <div class="text-center mb-4 p-3 bg-gray-50 rounded-xl">
-                <span class="text-gray-600">方角: </span>
-                <span id="compassBearing" class="font-bold">---</span>
+            <div class="flex justify-center gap-4 mb-4">
+                <div class="bg-slate-700/50 px-4 py-2 rounded-xl text-center">
+                    <div class="text-xs text-slate-400">方角</div>
+                    <div id="compassBearing" class="font-bold text-lg">---</div>
+                </div>
+                <div class="bg-slate-700/50 px-4 py-2 rounded-xl text-center">
+                    <div class="text-xs text-slate-400">精度</div>
+                    <div id="compassAccuracy" class="font-bold text-lg">---</div>
+                </div>
             </div>
             
             <!-- 注意書き -->
-            <div class="text-xs text-gray-400 text-center">
-                📱 スマートフォンを水平に持って使用してください
+            <div class="text-xs text-slate-500 text-center">
+                📱 スマートフォンを水平に持ってご使用ください
             </div>
         </div>
     </div>
@@ -1536,14 +1588,22 @@
             const bearing = calculateBearing(currentPos, compassDestination);
             const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
             const index = Math.round(bearing / 45) % 8;
-            document.getElementById('compassBearing').textContent = `${directions[index]} (${Math.round(bearing)}°)`;
+            document.getElementById('compassBearing').textContent = `${directions[index]} ${Math.round(bearing)}°`;
+            
+            // GPS精度表示
+            const accuracy = pos.coords.accuracy;
+            document.getElementById('compassAccuracy').textContent = accuracy ? `±${Math.round(accuracy)}m` : '---';
             
             updateCompassArrow();
             
             // 到着判定
-            if (distance < 0.05) { // 50m以内
-                document.getElementById('compassDistance').textContent = '到着！';
-                document.getElementById('compassDistance').classList.add('text-yellow-500');
+            if (distance < 0.03) { // 30m以内
+                document.getElementById('compassDistance').textContent = '🎉 到着！';
+                document.getElementById('compassDistance').classList.remove('text-cyan-400');
+                document.getElementById('compassDistance').classList.add('text-yellow-400');
+            } else {
+                document.getElementById('compassDistance').classList.remove('text-yellow-400');
+                document.getElementById('compassDistance').classList.add('text-cyan-400');
             }
         }
         
