@@ -235,34 +235,58 @@
                     <div class="text-sm text-gray-600">分</div>
                 </div>
             </div>
-            <button onclick="startNavigation()" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-xl hover:shadow-xl transition-all mb-3">🧭 ナビ開始</button>
+            <button onclick="startCompass()" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-xl hover:shadow-xl transition-all mb-3">🧭 コンパスで方向確認</button>
             <button onclick="openInGoogleMaps()" class="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors">📱 Googleマップで開く</button>
         </div>
 
-        <!-- ナビモード -->
-        <div id="navModePanel" class="bg-white rounded-2xl shadow-lg p-6 hidden">
+        <!-- コンパスモード -->
+        <div id="compassModePanel" class="bg-white rounded-2xl shadow-lg p-6 hidden">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-bold">🧭 ナビゲーション中</h2>
-                <div id="navStatus" class="text-sm text-green-600 font-medium">📍 位置情報取得中...</div>
+                <h2 class="text-lg font-bold">🧭 コンパス</h2>
+                <button onclick="stopCompass()" class="text-gray-500 hover:text-gray-700 text-xl">✕</button>
             </div>
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div class="bg-blue-50 p-4 rounded-xl text-center">
-                    <div id="navWalkedDistance" class="text-2xl font-bold text-blue-600">0</div>
-                    <div class="text-sm text-gray-600">歩いた距離 (km)</div>
+            
+            <!-- 目的地名 -->
+            <div id="compassDestName" class="text-center text-lg font-bold mb-4 text-gray-800"></div>
+            
+            <!-- コンパス表示 -->
+            <div class="flex justify-center mb-6">
+                <div class="relative w-64 h-64">
+                    <!-- 外枠 -->
+                    <div class="absolute inset-0 rounded-full border-4 border-gray-200"></div>
+                    <!-- 方位表示 -->
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="absolute top-2 text-gray-400 font-bold">N</div>
+                        <div class="absolute bottom-2 text-gray-400 font-bold">S</div>
+                        <div class="absolute left-2 text-gray-400 font-bold">W</div>
+                        <div class="absolute right-2 text-gray-400 font-bold">E</div>
+                    </div>
+                    <!-- 矢印 -->
+                    <div id="compassArrow" class="absolute inset-0 flex items-center justify-center transition-transform duration-300">
+                        <svg width="120" height="120" viewBox="0 0 100 100">
+                            <polygon points="50,10 35,60 50,50 65,60" fill="#ef4444" stroke="#b91c1c" stroke-width="2"/>
+                            <circle cx="50" cy="50" r="8" fill="#374151"/>
+                        </svg>
+                    </div>
                 </div>
-                <div class="bg-green-50 p-4 rounded-xl text-center">
-                    <div id="navRemainingDistance" class="text-2xl font-bold text-green-600">0</div>
-                    <div class="text-sm text-gray-600">残り (km)</div>
-                </div>
             </div>
-            <div class="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-xl">
-                <span class="font-medium">地図の自動追従</span>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="followModeToggle" checked class="sr-only peer" onchange="toggleFollowMode()">
-                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                </label>
+            
+            <!-- 距離表示 -->
+            <div class="text-center mb-6">
+                <div id="compassDistance" class="text-4xl font-bold text-green-600">---</div>
+                <div class="text-gray-500">目的地まで</div>
             </div>
-            <button onclick="stopNavigation()" class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors">⏹️ ナビを終了</button>
+            
+            <!-- 方角表示 -->
+            <div class="text-center mb-4 p-3 bg-gray-50 rounded-xl">
+                <span class="text-gray-600">方角: </span>
+                <span id="compassBearing" class="font-bold">---</span>
+            </div>
+            
+            <!-- 注意書き -->
+            <div class="text-xs text-gray-400 text-center">
+                📱 スマートフォンを水平に持って使用してください
+            </div>
         </div>
     </div>
 
@@ -336,12 +360,9 @@
         let autocompletePlace = null;
 
         let isNavigating = false;
-        let watchId = null;
-        let currentPositionMarker = null;
-        let currentPositionCircle = null;
-        let followMode = true;
-        let startPosition = null;
-        let totalRouteDistance = 0;
+        let compassWatchId = null;
+        let compassDestination = null;
+        let deviceHeading = 0;
 
         // スタンプラリー用
         let stampRallies = {};
@@ -699,6 +720,7 @@
                             </div>
                             <div class="flex flex-col gap-1">
                                 ${!isVisited ? `<button onclick="checkIn('${rallyKey}', ${spot.id})" class="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600">チェックイン</button>` : ''}
+                                <button onclick="startCompassToSpot(${spot.lat}, ${spot.lng}, '${spot.name.replace(/'/g, "\\'")}')" class="px-3 py-1 bg-purple-500 text-white rounded-lg text-xs font-bold hover:bg-purple-600">🧭コンパス</button>
                                 <button onclick="createRouteToSpot(${spot.lat}, ${spot.lng}, '${spot.name.replace(/'/g, "\\'")}')" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600">ルート</button>
                                 <a href="${googleMapUrl}" target="_blank" class="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 text-center">📍Maps</a>
                             </div>
@@ -1359,7 +1381,6 @@
 
             let totalDist = 0, totalDur = 0;
             currentRoute.legs.forEach(leg => { totalDist += leg.distance.value; totalDur += leg.duration.value; });
-            totalRouteDistance = totalDist;
             document.getElementById('routeDistance').textContent = (totalDist / 1000).toFixed(1);
             document.getElementById('routeSteps').textContent = Math.round((totalDist / 1000) / 0.7 * 1000).toLocaleString();
             document.getElementById('routeTime').textContent = Math.round(totalDur / 60);
@@ -1415,59 +1436,171 @@
             window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${waypoints.join('|')}&travelmode=walking`, '_blank');
         }
 
-        // ナビゲーション
-        function startNavigation() {
-            if (!currentRoute) { alert('ルートを先に作成してください'); return; }
-            if (!navigator.geolocation) { alert('位置情報非対応'); return; }
-            isNavigating = true; followMode = true; startPosition = {...userLocation};
-            enterNavigationMode();
-            watchId = navigator.geolocation.watchPosition(updateCurrentPosition, () => { document.getElementById('navStatus').textContent = '⚠️ GPS信号弱'; }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-            document.getElementById('navStatus').textContent = '📍 GPS追跡中';
-        }
-
-        function stopNavigation() {
-            if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-            isNavigating = false;
-            if (currentPositionMarker) { currentPositionMarker.setMap(null); currentPositionMarker = null; }
-            if (currentPositionCircle) { currentPositionCircle.setMap(null); currentPositionCircle = null; }
-            exitNavigationMode();
-        }
-
-        function enterNavigationMode() {
-            document.getElementById('modeSection').classList.add('hidden');
-            document.getElementById('routeCreationSection').classList.add('hidden');
-            document.getElementById('stampRallySection').classList.add('hidden');
-            document.getElementById('routeSwitch').classList.add('hidden');
+        // コンパス機能
+        function startCompass() {
+            if (!currentRoute && !selectedDestination) { 
+                alert('ルートを作成するか、目的地を選択してください'); 
+                return; 
+            }
+            
+            // 目的地を設定（片道モードなら目的地、周回モードなら最初の経由地）
+            if (currentMode === 'oneway' && selectedDestination) {
+                compassDestination = { ...selectedDestination };
+            } else if (currentRoute && currentRoute.legs.length > 0) {
+                const firstLeg = currentRoute.legs[0];
+                compassDestination = { 
+                    name: '次の経由地',
+                    lat: firstLeg.end_location.lat, 
+                    lng: firstLeg.end_location.lng 
+                };
+            }
+            
+            if (!compassDestination) {
+                alert('目的地が設定されていません');
+                return;
+            }
+            
+            isNavigating = true;
+            document.getElementById('compassDestName').textContent = compassDestination.name || '目的地';
+            document.getElementById('compassModePanel').classList.remove('hidden');
             document.getElementById('routeInfo').classList.add('hidden');
-            document.getElementById('navModePanel').classList.remove('hidden');
-            document.getElementById('map').classList.add('nav-mode');
-            setTimeout(() => { google.maps.event.trigger(map, 'resize'); if (userLocation) { map.setCenter(userLocation); map.setZoom(17); } }, 100);
+            
+            // 位置情報の監視開始
+            if (navigator.geolocation) {
+                compassWatchId = navigator.geolocation.watchPosition(
+                    updateCompass, 
+                    () => console.log('GPS取得失敗'),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+                );
+            }
+            
+            // デバイスの向き取得（iOS対応）
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Android / その他
+                window.addEventListener('deviceorientationabsolute', handleOrientation);
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+            
+            // 初回更新
+            if (userLocation) updateCompass({ coords: { latitude: userLocation.lat, longitude: userLocation.lng } });
         }
-
-        function exitNavigationMode() {
-            document.getElementById('modeSection').classList.remove('hidden');
-            if (currentMode === 'stamp') document.getElementById('stampRallySection').classList.remove('hidden');
-            else document.getElementById('routeCreationSection').classList.remove('hidden');
-            if (allRoutes.length > 1) document.getElementById('routeSwitch').classList.remove('hidden');
+        
+        function stopCompass() {
+            isNavigating = false;
+            if (compassWatchId !== null) {
+                navigator.geolocation.clearWatch(compassWatchId);
+                compassWatchId = null;
+            }
+            window.removeEventListener('deviceorientation', handleOrientation);
+            window.removeEventListener('deviceorientationabsolute', handleOrientation);
+            document.getElementById('compassModePanel').classList.add('hidden');
             document.getElementById('routeInfo').classList.remove('hidden');
-            document.getElementById('navModePanel').classList.add('hidden');
-            document.getElementById('map').classList.remove('nav-mode');
-            setTimeout(() => google.maps.event.trigger(map, 'resize'), 100);
         }
-
-        function updateCurrentPosition(pos) {
-            const cur = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            if (currentPositionMarker) currentPositionMarker.setPosition(cur);
-            else currentPositionMarker = new google.maps.Marker({ position: cur, map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4285F4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }, zIndex: 999 });
-            if (currentPositionCircle) currentPositionCircle.setCenter(cur);
-            else currentPositionCircle = new google.maps.Circle({ strokeColor: '#4285F4', strokeOpacity: 0.4, strokeWeight: 2, fillColor: '#4285F4', fillOpacity: 0.15, map, center: cur, radius: pos.coords.accuracy || 20, zIndex: 998 });
-            if (followMode) map.panTo(cur);
-            const walked = calculateDistance(startPosition, cur);
-            document.getElementById('navWalkedDistance').textContent = walked.toFixed(2);
-            document.getElementById('navRemainingDistance').textContent = Math.max(0, (totalRouteDistance / 1000) - walked).toFixed(2);
+        
+        function handleOrientation(event) {
+            // デバイスの向き（北からの角度）
+            if (event.webkitCompassHeading !== undefined) {
+                // iOS
+                deviceHeading = event.webkitCompassHeading;
+            } else if (event.alpha !== null) {
+                // Android（alphaは反時計回りなので変換）
+                deviceHeading = event.absolute ? (360 - event.alpha) : event.alpha;
+            }
+            updateCompassArrow();
         }
-
-        function toggleFollowMode() { followMode = document.getElementById('followModeToggle').checked; }
+        
+        function updateCompass(pos) {
+            if (!compassDestination) return;
+            
+            const currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            userLocation = currentPos;
+            
+            // 距離計算
+            const distance = calculateDistance(currentPos, compassDestination);
+            if (distance < 1) {
+                document.getElementById('compassDistance').textContent = `${(distance * 1000).toFixed(0)}m`;
+            } else {
+                document.getElementById('compassDistance').textContent = `${distance.toFixed(2)}km`;
+            }
+            
+            // 方位角計算
+            const bearing = calculateBearing(currentPos, compassDestination);
+            const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+            const index = Math.round(bearing / 45) % 8;
+            document.getElementById('compassBearing').textContent = `${directions[index]} (${Math.round(bearing)}°)`;
+            
+            updateCompassArrow();
+            
+            // 到着判定
+            if (distance < 0.05) { // 50m以内
+                document.getElementById('compassDistance').textContent = '到着！';
+                document.getElementById('compassDistance').classList.add('text-yellow-500');
+            }
+        }
+        
+        function updateCompassArrow() {
+            if (!compassDestination || !userLocation) return;
+            
+            // 目的地への方位角
+            const bearing = calculateBearing(userLocation, compassDestination);
+            
+            // 矢印の回転角度 = 目的地への方位角 - デバイスの向き
+            const rotation = bearing - deviceHeading;
+            
+            document.getElementById('compassArrow').style.transform = `rotate(${rotation}deg)`;
+        }
+        
+        function calculateBearing(from, to) {
+            const lat1 = from.lat * Math.PI / 180;
+            const lat2 = to.lat * Math.PI / 180;
+            const dLng = (to.lng - from.lng) * Math.PI / 180;
+            
+            const y = Math.sin(dLng) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+            
+            let bearing = Math.atan2(y, x) * 180 / Math.PI;
+            return (bearing + 360) % 360; // 0-360度に正規化
+        }
+        
+        // スタンプラリーのスポットへのコンパス
+        function startCompassToSpot(lat, lng, name) {
+            compassDestination = { name, lat, lng };
+            isNavigating = true;
+            document.getElementById('compassDestName').textContent = name;
+            document.getElementById('compassModePanel').classList.remove('hidden');
+            document.getElementById('rallyDetailSection').classList.add('hidden');
+            
+            if (navigator.geolocation) {
+                compassWatchId = navigator.geolocation.watchPosition(
+                    updateCompass, 
+                    () => console.log('GPS取得失敗'),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+                );
+            }
+            
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        }
+                    });
+            } else {
+                window.addEventListener('deviceorientationabsolute', handleOrientation);
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+            
+            if (userLocation) updateCompass({ coords: { latitude: userLocation.lat, longitude: userLocation.lng } });
+        }
     </script>
 </body>
 </html>
