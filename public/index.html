@@ -442,6 +442,8 @@
         let routePath = []; // ルートのポリライン座標
         let totalRouteDistance = 0;
         let currentRouteIndex = 0; // ルート上の現在位置インデックス
+        let walkedDistance = 0; // 実際に歩いた累積距離(km)
+        let lastPosition = null; // 前回の位置
 
         // スタンプラリー用
         let stampRallies = {};
@@ -1549,6 +1551,8 @@
             
             isNavigating = true;
             currentRouteIndex = 0;
+            walkedDistance = 0;
+            lastPosition = null;
             document.getElementById('compassModePanel').classList.remove('hidden');
             document.getElementById('routeInfo').classList.add('hidden');
             
@@ -1602,6 +1606,8 @@
             compassMode = 'single';
             routePath = [];
             currentRouteIndex = 0;
+            walkedDistance = 0;
+            lastPosition = null;
             document.getElementById('compassDistance').classList.remove('text-yellow-400');
             document.getElementById('compassDistance').classList.add('text-emerald-400');
         }
@@ -1664,7 +1670,25 @@
         function updateRouteProgress(currentPos) {
             if (routePath.length < 2) return;
             
-            // 現在位置に最も近いルート上の点を見つける
+            // 実際に歩いた距離を累積
+            if (lastPosition) {
+                const moved = calculateDistance(lastPosition, currentPos);
+                // 明らかにワープ（GPS誤差）でない場合のみ加算（100m以下）
+                if (moved < 0.1) {
+                    walkedDistance += moved;
+                }
+            }
+            lastPosition = { ...currentPos };
+            
+            // 進捗計算（実際に歩いた距離 / 総ルート距離）
+            const totalKm = totalRouteDistance / 1000;
+            const progress = Math.min(100, (walkedDistance / totalKm) * 100);
+            
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+            document.getElementById('walkedDistance').textContent = `${walkedDistance.toFixed(1)}km`;
+            
+            // 現在位置に最も近いルート上の点を見つける（方向案内用）
             let minDist = Infinity;
             let nearestIndex = 0;
             
@@ -1676,24 +1700,8 @@
                 }
             }
             
-            // 進んでいる方向を考慮（後退しないように）
-            if (nearestIndex >= currentRouteIndex) {
-                currentRouteIndex = nearestIndex;
-            }
-            
-            // 進捗計算（ルート上の位置から）
-            let walkedDist = 0;
-            for (let i = 0; i < currentRouteIndex && i < routePath.length - 1; i++) {
-                walkedDist += calculateDistance(routePath[i], routePath[i + 1]);
-            }
-            
-            const progress = Math.min(100, (walkedDist / (totalRouteDistance / 1000)) * 100);
-            document.getElementById('progressBar').style.width = `${progress}%`;
-            document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
-            document.getElementById('walkedDistance').textContent = `${walkedDist.toFixed(1)}km`;
-            
-            // 次のポイントを目標に設定
-            const lookAhead = Math.min(currentRouteIndex + 5, routePath.length - 1);
+            // 次のポイントを目標に設定（現在位置から少し先）
+            const lookAhead = Math.min(nearestIndex + 10, routePath.length - 1);
             const nextPoint = routePath[lookAhead];
             compassDestination = nextPoint;
             
@@ -1713,11 +1721,21 @@
             
             updateCompassArrow();
             
-            // ゴール判定（周回完了）
-            if (progress >= 95) {
-                document.getElementById('compassDestName').textContent = '🎉 ゴール間近！';
+            // 残り距離
+            const remaining = Math.max(0, totalKm - walkedDistance);
+            
+            // ゴール判定
+            if (remaining < 0.05) { // 残り50m以内
+                document.getElementById('compassDestName').textContent = '🎉 ゴール！';
+                document.getElementById('compassDistance').textContent = '到着！';
                 document.getElementById('compassDistance').classList.remove('text-emerald-400');
                 document.getElementById('compassDistance').classList.add('text-yellow-400');
+            } else if (remaining < 0.2) { // 残り200m以内
+                document.getElementById('compassDestName').textContent = '🎉 ゴール間近！';
+            } else {
+                document.getElementById('compassDestName').textContent = '🔄 周回コース';
+                document.getElementById('compassDistance').classList.remove('text-yellow-400');
+                document.getElementById('compassDistance').classList.add('text-emerald-400');
             }
         }
         
