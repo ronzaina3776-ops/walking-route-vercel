@@ -247,7 +247,22 @@
             </div>
             
             <!-- 目的地名 -->
-            <div id="compassDestName" class="text-center text-xl font-bold mb-6 text-emerald-400"></div>
+            <div id="compassDestName" class="text-center text-xl font-bold mb-4 text-emerald-400"></div>
+            
+            <!-- 進捗バー（周回モード用） -->
+            <div id="progressSection" class="mb-4 hidden">
+                <div class="flex justify-between text-sm text-slate-400 mb-1">
+                    <span>進捗</span>
+                    <span id="progressText">0%</span>
+                </div>
+                <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate-500 mt-1">
+                    <span id="walkedDistance">0km</span>
+                    <span id="totalDistance">0km</span>
+                </div>
+            </div>
             
             <!-- コンパス表示 -->
             <div class="flex justify-center mb-6">
@@ -328,7 +343,7 @@
             <!-- 距離表示 -->
             <div class="text-center mb-4">
                 <div id="compassDistance" class="text-5xl font-bold text-emerald-400 tracking-tight font-mono">---</div>
-                <div class="text-slate-400 text-sm mt-1">目的地まで</div>
+                <div id="compassDistanceLabel" class="text-slate-400 text-sm mt-1">目的地まで</div>
             </div>
             
             <!-- 方角表示 -->
@@ -423,6 +438,10 @@
         let compassWatchId = null;
         let compassDestination = null;
         let deviceHeading = 0;
+        let compassMode = 'single'; // 'single' | 'route'
+        let routePath = []; // ルートのポリライン座標
+        let totalRouteDistance = 0;
+        let currentRouteIndex = 0; // ルート上の現在位置インデックス
 
         // スタンプラリー用
         let stampRallies = {};
@@ -1441,6 +1460,7 @@
 
             let totalDist = 0, totalDur = 0;
             currentRoute.legs.forEach(leg => { totalDist += leg.distance.value; totalDur += leg.duration.value; });
+            totalRouteDistance = totalDist; // コンパス用に保存
             document.getElementById('routeDistance').textContent = (totalDist / 1000).toFixed(1);
             document.getElementById('routeSteps').textContent = Math.round((totalDist / 1000) / 0.7 * 1000).toLocaleString();
             document.getElementById('routeTime').textContent = Math.round(totalDur / 60);
@@ -1498,30 +1518,37 @@
 
         // コンパス機能
         function startCompass() {
-            if (!currentRoute && !selectedDestination) { 
-                alert('ルートを作成するか、目的地を選択してください'); 
+            if (!currentRoute) { 
+                alert('ルートを作成してください'); 
                 return; 
             }
             
-            // 目的地を設定（片道モードなら目的地、周回モードなら最初の経由地）
-            if (currentMode === 'oneway' && selectedDestination) {
-                compassDestination = { ...selectedDestination };
-            } else if (currentRoute && currentRoute.legs.length > 0) {
-                const firstLeg = currentRoute.legs[0];
-                compassDestination = { 
-                    name: '次の経由地',
-                    lat: firstLeg.end_location.lat, 
-                    lng: firstLeg.end_location.lng 
-                };
-            }
+            // ルートのポリラインを取得
+            routePath = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points)
+                .map(p => ({ lat: p.lat(), lng: p.lng() }));
             
-            if (!compassDestination) {
-                alert('目的地が設定されていません');
-                return;
+            // 総距離を計算
+            totalRouteDistance = 0;
+            currentRoute.legs.forEach(leg => totalRouteDistance += leg.distance.value);
+            
+            if (currentMode === 'loop') {
+                // 周回モード
+                compassMode = 'route';
+                document.getElementById('compassDestName').textContent = '🔄 周回コース';
+                document.getElementById('compassDistanceLabel').textContent = '次のポイントまで';
+                document.getElementById('progressSection').classList.remove('hidden');
+                document.getElementById('totalDistance').textContent = `${(totalRouteDistance / 1000).toFixed(1)}km`;
+            } else {
+                // 片道モード
+                compassMode = 'single';
+                compassDestination = { ...selectedDestination };
+                document.getElementById('compassDestName').textContent = selectedDestination?.name || '目的地';
+                document.getElementById('compassDistanceLabel').textContent = '目的地まで';
+                document.getElementById('progressSection').classList.add('hidden');
             }
             
             isNavigating = true;
-            document.getElementById('compassDestName').textContent = compassDestination.name || '目的地';
+            currentRouteIndex = 0;
             document.getElementById('compassModePanel').classList.remove('hidden');
             document.getElementById('routeInfo').classList.add('hidden');
             
@@ -1536,7 +1563,6 @@
             
             // デバイスの向き取得（iOS対応）
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+
                 DeviceOrientationEvent.requestPermission()
                     .then(response => {
                         if (response === 'granted') {
@@ -1545,13 +1571,12 @@
                     })
                     .catch(console.error);
             } else {
-                // Android / その他
                 window.addEventListener('deviceorientationabsolute', handleOrientation);
                 window.addEventListener('deviceorientation', handleOrientation);
             }
             
             // 初回更新
-            if (userLocation) updateCompass({ coords: { latitude: userLocation.lat, longitude: userLocation.lng } });
+            if (userLocation) updateCompass({ coords: { latitude: userLocation.lat, longitude: userLocation.lng, accuracy: 10 } });
         }
         
         function stopCompass() {
@@ -1563,7 +1588,22 @@
             window.removeEventListener('deviceorientation', handleOrientation);
             window.removeEventListener('deviceorientationabsolute', handleOrientation);
             document.getElementById('compassModePanel').classList.add('hidden');
-            document.getElementById('routeInfo').classList.remove('hidden');
+            
+            // モードに応じて適切な画面に戻る
+            if (currentMode === 'stamp' && currentRallyKey) {
+                document.getElementById('rallyDetailSection').classList.remove('hidden');
+            } else {
+                document.getElementById('routeInfo').classList.remove('hidden');
+            }
+            
+            document.getElementById('progressSection').classList.add('hidden');
+            
+            // リセット
+            compassMode = 'single';
+            routePath = [];
+            currentRouteIndex = 0;
+            document.getElementById('compassDistance').classList.remove('text-yellow-400');
+            document.getElementById('compassDistance').classList.add('text-emerald-400');
         }
         
         function handleOrientation(event) {
@@ -1579,39 +1619,105 @@
         }
         
         function updateCompass(pos) {
-            if (!compassDestination) return;
-            
             const currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             userLocation = currentPos;
-            
-            // 距離計算
-            const distance = calculateDistance(currentPos, compassDestination);
-            if (distance < 1) {
-                document.getElementById('compassDistance').textContent = `${(distance * 1000).toFixed(0)}m`;
-            } else {
-                document.getElementById('compassDistance').textContent = `${distance.toFixed(2)}km`;
-            }
-            
-            // 方位角計算
-            const bearing = calculateBearing(currentPos, compassDestination);
-            const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
-            const index = Math.round(bearing / 45) % 8;
-            document.getElementById('compassBearing').textContent = `${directions[index]} ${Math.round(bearing)}°`;
             
             // GPS精度表示
             const accuracy = pos.coords.accuracy;
             document.getElementById('compassAccuracy').textContent = accuracy ? `±${Math.round(accuracy)}m` : '---';
             
+            if (compassMode === 'route') {
+                // 周回モード: ルート上の進捗を計算
+                updateRouteProgress(currentPos);
+            } else {
+                // 片道/スポットモード: 目的地への距離
+                if (!compassDestination) return;
+                
+                const distance = calculateDistance(currentPos, compassDestination);
+                if (distance < 1) {
+                    document.getElementById('compassDistance').textContent = `${(distance * 1000).toFixed(0)}m`;
+                } else {
+                    document.getElementById('compassDistance').textContent = `${distance.toFixed(2)}km`;
+                }
+                
+                // 方位角計算
+                const bearing = calculateBearing(currentPos, compassDestination);
+                const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+                const index = Math.round(bearing / 45) % 8;
+                document.getElementById('compassBearing').textContent = `${directions[index]} ${Math.round(bearing)}°`;
+                
+                updateCompassArrow();
+                
+                // 到着判定
+                if (distance < 0.03) {
+                    document.getElementById('compassDistance').textContent = '🎉 到着！';
+                    document.getElementById('compassDistance').classList.remove('text-emerald-400');
+                    document.getElementById('compassDistance').classList.add('text-yellow-400');
+                } else {
+                    document.getElementById('compassDistance').classList.remove('text-yellow-400');
+                    document.getElementById('compassDistance').classList.add('text-emerald-400');
+                }
+            }
+        }
+        
+        // 周回モード用: ルート上の進捗を更新
+        function updateRouteProgress(currentPos) {
+            if (routePath.length < 2) return;
+            
+            // 現在位置に最も近いルート上の点を見つける
+            let minDist = Infinity;
+            let nearestIndex = 0;
+            
+            for (let i = 0; i < routePath.length; i++) {
+                const dist = calculateDistance(currentPos, routePath[i]);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestIndex = i;
+                }
+            }
+            
+            // 進んでいる方向を考慮（後退しないように）
+            if (nearestIndex >= currentRouteIndex) {
+                currentRouteIndex = nearestIndex;
+            }
+            
+            // 進捗計算（ルート上の位置から）
+            let walkedDist = 0;
+            for (let i = 0; i < currentRouteIndex && i < routePath.length - 1; i++) {
+                walkedDist += calculateDistance(routePath[i], routePath[i + 1]);
+            }
+            
+            const progress = Math.min(100, (walkedDist / (totalRouteDistance / 1000)) * 100);
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
+            document.getElementById('walkedDistance').textContent = `${walkedDist.toFixed(1)}km`;
+            
+            // 次のポイントを目標に設定
+            const lookAhead = Math.min(currentRouteIndex + 5, routePath.length - 1);
+            const nextPoint = routePath[lookAhead];
+            compassDestination = nextPoint;
+            
+            // 次のポイントまでの距離
+            const distToNext = calculateDistance(currentPos, nextPoint);
+            if (distToNext < 1) {
+                document.getElementById('compassDistance').textContent = `${(distToNext * 1000).toFixed(0)}m`;
+            } else {
+                document.getElementById('compassDistance').textContent = `${distToNext.toFixed(2)}km`;
+            }
+            
+            // 方位角計算
+            const bearing = calculateBearing(currentPos, nextPoint);
+            const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+            const index = Math.round(bearing / 45) % 8;
+            document.getElementById('compassBearing').textContent = `${directions[index]} ${Math.round(bearing)}°`;
+            
             updateCompassArrow();
             
-            // 到着判定
-            if (distance < 0.03) { // 30m以内
-                document.getElementById('compassDistance').textContent = '🎉 到着！';
+            // ゴール判定（周回完了）
+            if (progress >= 95) {
+                document.getElementById('compassDestName').textContent = '🎉 ゴール間近！';
                 document.getElementById('compassDistance').classList.remove('text-emerald-400');
                 document.getElementById('compassDistance').classList.add('text-yellow-400');
-            } else {
-                document.getElementById('compassDistance').classList.remove('text-yellow-400');
-                document.getElementById('compassDistance').classList.add('text-emerald-400');
             }
         }
         
@@ -1641,9 +1747,12 @@
         
         // スタンプラリーのスポットへのコンパス
         function startCompassToSpot(lat, lng, name) {
+            compassMode = 'single';
             compassDestination = { name, lat, lng };
             isNavigating = true;
             document.getElementById('compassDestName').textContent = name;
+            document.getElementById('compassDistanceLabel').textContent = '目的地まで';
+            document.getElementById('progressSection').classList.add('hidden');
             document.getElementById('compassModePanel').classList.remove('hidden');
             document.getElementById('rallyDetailSection').classList.add('hidden');
             
@@ -1667,7 +1776,7 @@
                 window.addEventListener('deviceorientation', handleOrientation);
             }
             
-            if (userLocation) updateCompass({ coords: { latitude: userLocation.lat, longitude: userLocation.lng } });
+            if (userLocation) updateCompass({ coords: { latitude: userLocation.lat, longitude: userLocation.lng, accuracy: 10 } });
         }
     </script>
 </body>
