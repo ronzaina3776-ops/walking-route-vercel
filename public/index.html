@@ -1673,12 +1673,33 @@
             // 実際に歩いた距離を累積
             if (lastPosition) {
                 const moved = calculateDistance(lastPosition, currentPos);
-                // 明らかにワープ（GPS誤差）でない場合のみ加算（100m以下）
-                if (moved < 0.1) {
+                // 3m〜50mの移動のみカウント（GPSブレ除外）
+                if (moved < 0.05 && moved > 0.003) {
                     walkedDistance += moved;
                 }
             }
             lastPosition = { ...currentPos };
+            
+            // === 順番にポイントを通過していく方式 ===
+            // 現在のターゲットポイントに近づいたら次へ進む
+            const targetPoint = routePath[currentRouteIndex];
+            const distToTarget = calculateDistance(currentPos, targetPoint);
+            
+            // 30m以内に近づいたら「通過」とみなして次へ
+            if (distToTarget < 0.03 && currentRouteIndex < routePath.length - 1) {
+                currentRouteIndex++;
+            }
+            
+            // さらに、少し先のポイントも確認（ショートカットした場合）
+            for (let i = currentRouteIndex; i < Math.min(currentRouteIndex + 5, routePath.length); i++) {
+                const dist = calculateDistance(currentPos, routePath[i]);
+                if (dist < 0.02) { // 20m以内
+                    currentRouteIndex = i + 1;
+                }
+            }
+            
+            // 配列の範囲内に収める
+            currentRouteIndex = Math.min(currentRouteIndex, routePath.length - 1);
             
             // 進捗計算（実際に歩いた距離 / 総ルート距離）
             const totalKm = totalRouteDistance / 1000;
@@ -1688,20 +1709,8 @@
             document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
             document.getElementById('walkedDistance').textContent = `${walkedDistance.toFixed(1)}km`;
             
-            // 現在位置に最も近いルート上の点を見つける（方向案内用）
-            let minDist = Infinity;
-            let nearestIndex = 0;
-            
-            for (let i = 0; i < routePath.length; i++) {
-                const dist = calculateDistance(currentPos, routePath[i]);
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearestIndex = i;
-                }
-            }
-            
-            // 次のポイントを目標に設定（現在位置から少し先）
-            const lookAhead = Math.min(nearestIndex + 10, routePath.length - 1);
+            // 次のポイント（現在のインデックスから15点先）
+            const lookAhead = Math.min(currentRouteIndex + 15, routePath.length - 1);
             const nextPoint = routePath[lookAhead];
             compassDestination = nextPoint;
             
@@ -1725,12 +1734,12 @@
             const remaining = Math.max(0, totalKm - walkedDistance);
             
             // ゴール判定
-            if (remaining < 0.05) { // 残り50m以内
+            if (remaining < 0.05) {
                 document.getElementById('compassDestName').textContent = '🎉 ゴール！';
                 document.getElementById('compassDistance').textContent = '到着！';
                 document.getElementById('compassDistance').classList.remove('text-emerald-400');
                 document.getElementById('compassDistance').classList.add('text-yellow-400');
-            } else if (remaining < 0.2) { // 残り200m以内
+            } else if (remaining < 0.2) {
                 document.getElementById('compassDestName').textContent = '🎉 ゴール間近！';
             } else {
                 document.getElementById('compassDestName').textContent = '🔄 周回コース';
