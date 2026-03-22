@@ -441,9 +441,10 @@
         let compassMode = 'single'; // 'single' | 'route'
         let routePath = []; // ルートのポリライン座標
         let totalRouteDistance = 0;
-        let currentRouteIndex = 0; // ルート上の現在位置インデックス
+        let currentRouteIndex = 0; // 現在のチェックポイントインデックス
         let walkedDistance = 0; // 実際に歩いた累積距離(km)
         let lastPosition = null; // 前回の位置
+        let checkpoints = []; // チェックポイント（経由地 + ゴール）
 
         // スタンプラリー用
         let stampRallies = {};
@@ -1525,19 +1526,26 @@
                 return; 
             }
             
-            // ルートのポリラインを取得
-            routePath = google.maps.geometry.encoding.decodePath(currentRoute.overview_polyline.points)
-                .map(p => ({ lat: p.lat(), lng: p.lng() }));
-            
             // 総距離を計算
             totalRouteDistance = 0;
             currentRoute.legs.forEach(leg => totalRouteDistance += leg.distance.value);
             
             if (currentMode === 'loop') {
-                // 周回モード
+                // 周回モード：経由地 + ゴールをチェックポイントに
+                checkpoints = [];
+                currentRoute.legs.forEach((leg, i) => {
+                    checkpoints.push({
+                        name: `チェックポイント ${i + 1}`,
+                        lat: leg.end_location.lat,
+                        lng: leg.end_location.lng
+                    });
+                });
+                // 最後はゴール（スタート地点）
+                checkpoints[checkpoints.length - 1].name = '🏁 ゴール';
+                
                 compassMode = 'route';
-                document.getElementById('compassDestName').textContent = '🔄 周回コース';
-                document.getElementById('compassDistanceLabel').textContent = '次のポイントまで';
+                document.getElementById('compassDestName').textContent = checkpoints[0].name;
+                document.getElementById('compassDistanceLabel').textContent = '次のチェックポイントまで';
                 document.getElementById('progressSection').classList.remove('hidden');
                 document.getElementById('totalDistance').textContent = `${(totalRouteDistance / 1000).toFixed(1)}km`;
             } else {
@@ -1555,6 +1563,11 @@
             lastPosition = null;
             document.getElementById('compassModePanel').classList.remove('hidden');
             document.getElementById('routeInfo').classList.add('hidden');
+            
+            // 最初のチェックポイントを目的地に
+            if (compassMode === 'route' && checkpoints.length > 0) {
+                compassDestination = checkpoints[0];
+            }
             
             // 位置情報の監視開始
             if (navigator.geolocation) {
@@ -1605,6 +1618,7 @@
             // リセット
             compassMode = 'single';
             routePath = [];
+            checkpoints = [];
             currentRouteIndex = 0;
             walkedDistance = 0;
             lastPosition = null;
@@ -1666,9 +1680,9 @@
             }
         }
         
-        // 周回モード用: ルート上の進捗を更新
+        // 周回モード用: チェックポイントを順番に追跡
         function updateRouteProgress(currentPos) {
-            if (routePath.length < 2) return;
+            if (checkpoints.length === 0) return;
             
             // 実際に歩いた距離を累積
             if (lastPosition) {
@@ -1680,28 +1694,19 @@
             }
             lastPosition = { ...currentPos };
             
-            // === 順番にポイントを通過していく方式 ===
-            // 現在のターゲットポイントに近づいたら次へ進む
-            const targetPoint = routePath[currentRouteIndex];
-            const distToTarget = calculateDistance(currentPos, targetPoint);
+            // 現在のチェックポイント
+            const currentCheckpoint = checkpoints[currentRouteIndex];
+            const distToCheckpoint = calculateDistance(currentPos, currentCheckpoint);
             
-            // 30m以内に近づいたら「通過」とみなして次へ
-            if (distToTarget < 0.03 && currentRouteIndex < routePath.length - 1) {
+            // 50m以内に近づいたら「通過」とみなして次へ
+            if (distToCheckpoint < 0.05 && currentRouteIndex < checkpoints.length - 1) {
                 currentRouteIndex++;
+                // 次のチェックポイントを目的地に
+                compassDestination = checkpoints[currentRouteIndex];
+                document.getElementById('compassDestName').textContent = checkpoints[currentRouteIndex].name;
             }
             
-            // さらに、少し先のポイントも確認（ショートカットした場合）
-            for (let i = currentRouteIndex; i < Math.min(currentRouteIndex + 5, routePath.length); i++) {
-                const dist = calculateDistance(currentPos, routePath[i]);
-                if (dist < 0.02) { // 20m以内
-                    currentRouteIndex = i + 1;
-                }
-            }
-            
-            // 配列の範囲内に収める
-            currentRouteIndex = Math.min(currentRouteIndex, routePath.length - 1);
-            
-            // 進捗計算（実際に歩いた距離 / 総ルート距離）
+            // 進捗計算
             const totalKm = totalRouteDistance / 1000;
             const progress = Math.min(100, (walkedDistance / totalKm) * 100);
             
@@ -1709,42 +1714,27 @@
             document.getElementById('progressText').textContent = `${Math.round(progress)}%`;
             document.getElementById('walkedDistance').textContent = `${walkedDistance.toFixed(1)}km`;
             
-            // 次のポイント（現在のインデックスから15点先）
-            const lookAhead = Math.min(currentRouteIndex + 15, routePath.length - 1);
-            const nextPoint = routePath[lookAhead];
-            compassDestination = nextPoint;
-            
-            // 次のポイントまでの距離
-            const distToNext = calculateDistance(currentPos, nextPoint);
-            if (distToNext < 1) {
-                document.getElementById('compassDistance').textContent = `${(distToNext * 1000).toFixed(0)}m`;
+            // 現在のチェックポイントまでの距離を表示
+            if (distToCheckpoint < 1) {
+                document.getElementById('compassDistance').textContent = `${(distToCheckpoint * 1000).toFixed(0)}m`;
             } else {
-                document.getElementById('compassDistance').textContent = `${distToNext.toFixed(2)}km`;
+                document.getElementById('compassDistance').textContent = `${distToCheckpoint.toFixed(2)}km`;
             }
             
             // 方位角計算
-            const bearing = calculateBearing(currentPos, nextPoint);
+            const bearing = calculateBearing(currentPos, currentCheckpoint);
             const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
             const index = Math.round(bearing / 45) % 8;
             document.getElementById('compassBearing').textContent = `${directions[index]} ${Math.round(bearing)}°`;
             
             updateCompassArrow();
             
-            // 残り距離
-            const remaining = Math.max(0, totalKm - walkedDistance);
-            
-            // ゴール判定
-            if (remaining < 0.05) {
+            // ゴール判定（最後のチェックポイントに50m以内）
+            if (currentRouteIndex === checkpoints.length - 1 && distToCheckpoint < 0.05) {
                 document.getElementById('compassDestName').textContent = '🎉 ゴール！';
                 document.getElementById('compassDistance').textContent = '到着！';
                 document.getElementById('compassDistance').classList.remove('text-emerald-400');
                 document.getElementById('compassDistance').classList.add('text-yellow-400');
-            } else if (remaining < 0.2) {
-                document.getElementById('compassDestName').textContent = '🎉 ゴール間近！';
-            } else {
-                document.getElementById('compassDestName').textContent = '🔄 周回コース';
-                document.getElementById('compassDistance').classList.remove('text-yellow-400');
-                document.getElementById('compassDistance').classList.add('text-emerald-400');
             }
         }
         
