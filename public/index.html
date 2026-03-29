@@ -1398,7 +1398,8 @@
                 if (currentMode === 'loop') {
                     allRoutes = [];
                     const promises = [];
-                    for (let i = 0; i < 6; i++) {
+                    // 候補を増やして重複の少ないルートを見つけやすくする
+                    for (let i = 0; i < 12; i++) {
                         const waypoints = generateWaypoints(userLocation, targetDist, i * 1000);
                         promises.push(fetch('/api/directions', {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -1406,8 +1407,19 @@
                         }).then(r => r.json()).then(d => d.status === 'OK' && d.routes?.[0] ? d.routes[0] : null));
                     }
                     const routes = await Promise.all(promises);
-                    const valid = routes.filter(r => r).map(r => ({route: r, score: calculateRouteOverlapScore(r)})).sort((a,b) => a.score - b.score);
-                    allRoutes = valid.slice(0, 3).map(v => v.route);
+                    const scored = routes.filter(r => r).map(r => ({route: r, score: calculateRouteOverlapScore(r)}));
+                    
+                    // 重複5%以下のルートを優先
+                    const goodRoutes = scored.filter(r => r.score < 0.05).sort((a,b) => a.score - b.score);
+                    // 足りなければ重複15%以下も含める
+                    const okRoutes = scored.filter(r => r.score < 0.15).sort((a,b) => a.score - b.score);
+                    // それでも足りなければ全部から選ぶ
+                    const allScored = scored.sort((a,b) => a.score - b.score);
+                    
+                    const candidates = goodRoutes.length >= 3 ? goodRoutes : 
+                                       okRoutes.length >= 3 ? okRoutes : allScored;
+                    
+                    allRoutes = candidates.slice(0, 3).map(v => v.route);
                     if (allRoutes.length > 0) { displayRoute(0); if (allRoutes.length > 1) showRouteSelection(); else document.getElementById('routeSwitch').classList.add('hidden'); }
                     else alert('ルート作成に失敗しました');
                 } else {
