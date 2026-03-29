@@ -131,10 +131,33 @@
             <!-- ルート設定 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 class="font-medium mb-3">ルート設定</h2>
-                <label class="flex items-center gap-3 cursor-pointer">
+                <label class="flex items-center gap-3 cursor-pointer mb-4">
                     <input type="checkbox" id="avoidHighways" checked class="w-5 h-5 accent-green-500">
                     <span class="text-gray-700">大通り・幹線道路を避ける</span>
                 </label>
+                
+                <!-- 避けたい方角 -->
+                <div class="border-t pt-4">
+                    <div class="text-sm text-gray-600 mb-2">避けたい方角（坂道など）</div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <label class="flex flex-col items-center cursor-pointer">
+                            <input type="checkbox" id="avoidNorth" class="w-5 h-5 accent-red-500 mb-1">
+                            <span class="text-xs">北</span>
+                        </label>
+                        <label class="flex flex-col items-center cursor-pointer">
+                            <input type="checkbox" id="avoidEast" class="w-5 h-5 accent-red-500 mb-1">
+                            <span class="text-xs">東</span>
+                        </label>
+                        <label class="flex flex-col items-center cursor-pointer">
+                            <input type="checkbox" id="avoidSouth" class="w-5 h-5 accent-red-500 mb-1">
+                            <span class="text-xs">南</span>
+                        </label>
+                        <label class="flex flex-col items-center cursor-pointer">
+                            <input type="checkbox" id="avoidWest" class="w-5 h-5 accent-red-500 mb-1">
+                            <span class="text-xs">西</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- ルート作成ボタン -->
@@ -1493,14 +1516,86 @@
 
         function generateWaypoints(center, targetKm, seed = 0) {
             const waypoints = [];
-            const timeSeed = (Date.now() % 1000 + seed) / 1000;
-            const num = 4, radius = targetKm / 7.45;
-            const startAngle = Math.random() * Math.PI * 2 + timeSeed * Math.PI;
-            for (let i = 0; i < num; i++) {
-                const angle = startAngle + (Math.PI * 2 / num) * i + (Math.random() - 0.5) * 0.15;
-                const dist = radius * (0.97 + Math.random() * 0.06);
-                waypoints.push({ lat: center.lat + (dist / 111) * Math.cos(angle), lng: center.lng + (dist / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle) });
+            
+            // 避けたい方角を取得（角度範囲）
+            const avoidAngles = [];
+            if (document.getElementById('avoidNorth')?.checked) avoidAngles.push(0);    // 北 = 0°
+            if (document.getElementById('avoidEast')?.checked) avoidAngles.push(90);    // 東 = 90°
+            if (document.getElementById('avoidSouth')?.checked) avoidAngles.push(180);  // 南 = 180°
+            if (document.getElementById('avoidWest')?.checked) avoidAngles.push(270);   // 西 = 270°
+            
+            // 方角を避けるかチェック（±45°の範囲で判定）
+            function shouldAvoid(angleDeg) {
+                for (const avoid of avoidAngles) {
+                    let diff = Math.abs(angleDeg - avoid);
+                    if (diff > 180) diff = 360 - diff;
+                    if (diff < 45) return true;
+                }
+                return false;
             }
+            
+            // シード値でバリエーションを決定
+            const variation = Math.floor(seed / 1000) % 5; // 0-4の5パターン
+            const timeSeed = (Date.now() % 1000 + seed) / 1000;
+            const radius = targetKm / 7.45;
+            
+            let angles = [];
+            
+            switch (variation) {
+                case 0: // 円形（4点、90°間隔）
+                    angles = [0, 90, 180, 270];
+                    break;
+                case 1: // 三角形（3点、120°間隔）
+                    angles = [0, 120, 240];
+                    break;
+                case 2: // 五角形（5点、72°間隔）
+                    angles = [0, 72, 144, 216, 288];
+                    break;
+                case 3: // 楕円形（4点、不均等）
+                    angles = [0, 60, 180, 300];
+                    break;
+                case 4: // ダイヤモンド形（4点、斜め）
+                    angles = [45, 135, 225, 315];
+                    break;
+            }
+            
+            // ランダムな開始角度
+            const startAngle = Math.random() * 360 + timeSeed * 180;
+            
+            for (let i = 0; i < angles.length; i++) {
+                let angleDeg = (startAngle + angles[i]) % 360;
+                
+                // 避けたい方角ならスキップ
+                if (shouldAvoid(angleDeg)) continue;
+                
+                // 少しランダムにずらす
+                angleDeg += (Math.random() - 0.5) * 20;
+                const angleRad = angleDeg * Math.PI / 180;
+                
+                // 距離も少しランダムに
+                const dist = radius * (0.9 + Math.random() * 0.2);
+                
+                waypoints.push({ 
+                    lat: center.lat + (dist / 111) * Math.cos(angleRad), 
+                    lng: center.lng + (dist / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angleRad) 
+                });
+            }
+            
+            // 最低2点は必要
+            if (waypoints.length < 2) {
+                // 避けない方角から2点追加
+                for (let angleDeg = 0; angleDeg < 360 && waypoints.length < 2; angleDeg += 45) {
+                    if (!shouldAvoid(angleDeg)) {
+                        const angleRad = angleDeg * Math.PI / 180;
+                        const dist = radius * (0.9 + Math.random() * 0.2);
+                        waypoints.push({ 
+                            lat: center.lat + (dist / 111) * Math.cos(angleRad), 
+                            lng: center.lng + (dist / (111 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angleRad) 
+                        });
+                    }
+                }
+            }
+            
             return waypoints;
         }
 
